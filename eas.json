@@ -1,0 +1,28 @@
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "distribution": "store",
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6790571446",
+        "ascApiKeyPath": "ios/certs/AuthKey_XQAFGWK9Z5.p8",
+        "ascApiKeyId": "XQAFGWK9Z5",
+        "ascApiKeyIssuerId": "25e8f0b4-d9d3-4e94-bbb5-29b759e9884a"
+      }
+    }
+  }
+}
