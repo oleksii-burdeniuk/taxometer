@@ -10,7 +10,6 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.oleksiiburdeniuk.taxometer",
-      "buildNumber": "1",
       "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false

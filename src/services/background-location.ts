@@ -33,10 +33,12 @@ export async function startBackgroundLocation(
     await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
       accuracy: Location.Accuracy.BestForNavigation,
       activityType: Location.ActivityType.AutomotiveNavigation,
-      distanceInterval: 5,
-      timeInterval: 3000,
-      deferredUpdatesDistance: 10,
-      deferredUpdatesInterval: 5000,
+      // A taximeter also needs location timestamps while the car is stopped.
+      // A distance filter would otherwise delay the time tariff on iOS.
+      distanceInterval: 0,
+      timeInterval: 1000,
+      deferredUpdatesDistance: 0,
+      deferredUpdatesInterval: 0,
       pausesUpdatesAutomatically: false,
       showsBackgroundLocationIndicator: true,
       foregroundService: {

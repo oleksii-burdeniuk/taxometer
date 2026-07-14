@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type * as Location from 'expo-location';
-import { applyLocationToTrip } from '@/lib/trip-tracking';
+import { applyLocationToTrip, projectTripTime } from '@/lib/trip-tracking';
 import type { Tariff, Trip } from '@/types';
 
 const tariff: Tariff = {
@@ -56,6 +56,12 @@ test('does not charge across a manual pause boundary', () => {
   assert.equal(current.chargedDistanceMeters, 0);
 });
 
+test('ignores an out-of-order GPS update', () => {
+  const current = applyLocationToTrip(trip(), location(10_000, 0, 0));
+  const next = applyLocationToTrip(current, location(9_000, 0.001, 10));
+  assert.equal(next, current);
+});
+
 test('rejects distance from a low-quality GPS point', () => {
   let current = applyLocationToTrip(trip(), location(1_000, 0, 10));
   current = applyLocationToTrip(current, location(11_000, 0.00089932, 10, 100));
@@ -76,4 +82,35 @@ test('does not charge an unverified gap longer than 30 seconds', () => {
   current = applyLocationToTrip(current, location(61_000, 0, 0));
   assert.equal(current.waitingSeconds, 0);
   assert.equal(current.trackingWarning, 'gps');
+});
+
+test('projects stopped time smoothly between GPS updates without persisting a point', () => {
+  const current = applyLocationToTrip({
+    ...trip(),
+    tariffSegments: [{ id: 'segment', tariff, startedAt: '2026-01-01T00:00:00.000Z', chargedDistanceMeters: 0, waitingSeconds: 0 }],
+  }, location(1_000, 0, 0));
+  const projected = projectTripTime(current, 6_000);
+  assert.equal(projected.waitingSeconds, 5);
+  assert.equal(projected.tariffSegments?.[0].waitingSeconds, 5);
+  assert.equal(projected.points.length, current.points.length);
+  closeTo(projected.total, 0.25);
+});
+
+test('does not project the time tariff while moving above cross-over speed', () => {
+  const current = applyLocationToTrip(trip(), location(1_000, 0, 10));
+  const projected = projectTripTime(current, 6_000);
+  assert.equal(projected.waitingSeconds, 0);
+  assert.equal(projected.total, current.total);
+});
+
+test('caps visible projection when GPS data becomes stale', () => {
+  const current = applyLocationToTrip(trip(), location(1_000, 0, 0));
+  const projected = projectTripTime(current, 61_000);
+  assert.equal(projected.waitingSeconds, 30);
+});
+
+test('does not project across a pause or tariff-switch boundary', () => {
+  const current = applyLocationToTrip(trip(), location(1_000, 0, 0));
+  const projected = projectTripTime({ ...current, trackingResumedAt: 2_000 }, 6_000);
+  assert.equal(projected.waitingSeconds, 0);
 });

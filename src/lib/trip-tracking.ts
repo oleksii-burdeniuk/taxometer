@@ -26,6 +26,7 @@ export function applyLocationToTrip(trip: Trip, location: Location.LocationObjec
   if (trip.status !== 'active') return trip;
   const point = locationToPoint(location);
   const previous = trip.points.at(-1);
+  if (previous && point.timestamp <= previous.timestamp) return trip;
   const crossedPauseBoundary = !!previous && !!trip.trackingResumedAt && previous.timestamp < trip.trackingResumedAt;
   const elapsedSeconds = previous && !crossedPauseBoundary
     ? Math.max(0, (point.timestamp - previous.timestamp) / 1000)
@@ -66,6 +67,37 @@ export function applyLocationToTrip(trip: Trip, location: Location.LocationObjec
     next.total = calculateTripFare(next);
   } else {
     next.total = calculateFare(next.tariff, nextChargedDistance, next.waitingSeconds);
+  }
+  return next;
+}
+
+/**
+ * Projects the time tariff between native GPS updates without adding a synthetic
+ * route point. The projection is capped at the verified-gap limit used for billing.
+ */
+export function projectTripTime(trip: Trip, timestamp: number): Trip {
+  if (trip.status !== 'active') return trip;
+  const point = trip.points.at(-1);
+  if (!point || point.timestamp < (trip.trackingResumedAt ?? 0)) return trip;
+  const accuracyIsAcceptable = point.accuracy === null || point.accuracy === undefined || point.accuracy <= MAX_GPS_ACCURACY_METERS;
+  if (!accuracyIsAcceptable || !validSpeed(point.speed)) return trip;
+  const crossoverSpeedMps = getCrossoverSpeedKmh(trip.tariff) / 3.6;
+  if (point.speed >= crossoverSpeedMps) return trip;
+  const secondsSincePoint = Math.max(0, (timestamp - point.timestamp) / 1000);
+  const projectedSeconds = Math.min(secondsSincePoint, MAX_CHARGEABLE_GAP_SECONDS);
+  if (projectedSeconds <= 0) return trip;
+  const next: Trip = {
+    ...trip,
+    waitingSeconds: trip.waitingSeconds + projectedSeconds,
+  };
+  if (next.tariffSegments?.length) {
+    const lastIndex = next.tariffSegments.length - 1;
+    next.tariffSegments = next.tariffSegments.map((segment, index) => index === lastIndex
+      ? { ...segment, waitingSeconds: segment.waitingSeconds + projectedSeconds }
+      : segment);
+    next.total = calculateTripFare(next);
+  } else {
+    next.total = calculateFare(next.tariff, next.chargedDistanceMeters ?? next.distanceMeters, next.waitingSeconds);
   }
   return next;
 }

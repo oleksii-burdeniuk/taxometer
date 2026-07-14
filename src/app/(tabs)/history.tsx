@@ -2,15 +2,17 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { GestureResponderEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, ScreenHeader, sharedStyles } from '@/components/ui';
-import { colors } from '@/constants/colors';
+import { Card, ScreenHeader, useSharedStyles } from '@/components/ui';
+import { ThemeColors } from '@/constants/colors';
 import { useApp } from '@/context/app-context';
+import { useTheme, useThemedStyles } from '@/context/theme-context';
 import { useI18n } from '@/i18n';
 import { confirmAction } from '@/lib/confirm-action';
 import { formatMoney } from '@/lib/meter';
 
 export default function HistoryScreen() {
   const router = useRouter(); const { t, locale } = useI18n(); const { trips, deleteTrip } = useApp();
+  const { colors } = useTheme(); const sharedStyles = useSharedStyles(); const styles = useThemedStyles(createStyles);
   const confirmDelete = (event: GestureResponderEvent, id: string) => {
     event.stopPropagation();
     confirmAction({ title: t('deleteTripTitle'), message: t('deleteTripBody'), cancelLabel: t('cancel'), confirmLabel: t('delete'), destructive: true, onConfirm: () => deleteTrip(id) });
@@ -31,7 +33,7 @@ export default function HistoryScreen() {
     </ScrollView>
   </SafeAreaView>;
 }
-const styles = StyleSheet.create({
-  emptyContainer: { flexGrow: 1, justifyContent: 'center' }, empty: { alignItems: 'center', gap: 9, marginBottom: 80 }, emptyIcon: { width: 76, height: 76, borderRadius: 24, backgroundColor: '#ECEEF0', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }, emptyTitle: { fontSize: 22, fontWeight: '800' },
-  trip: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10 }, tripMain: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 4 }, dateIcon: { width: 48, height: 50, borderRadius: 14, backgroundColor: '#F1F2F3', alignItems: 'center', justifyContent: 'center' }, day: { fontSize: 17, fontWeight: '900' }, month: { color: colors.muted, fontSize: 9, fontWeight: '800' }, tripInfo: { flex: 1, gap: 4 }, tripName: { fontSize: 16, fontWeight: '800' }, tripMeta: { color: colors.muted, fontSize: 12 }, price: { maxWidth: 105, fontSize: 15, fontWeight: '900', textAlign: 'right' }, deleteButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#FFF0F0', alignItems: 'center', justifyContent: 'center' },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  emptyContainer: { flexGrow: 1, justifyContent: 'center' }, empty: { alignItems: 'center', gap: 9, marginBottom: 80 }, emptyIcon: { width: 76, height: 76, borderRadius: 24, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center', marginBottom: 6 }, emptyTitle: { color: colors.text, fontSize: 22, fontWeight: '800' },
+  trip: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10 }, tripMain: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 4 }, dateIcon: { width: 48, height: 50, borderRadius: 14, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }, day: { color: colors.text, fontSize: 17, fontWeight: '900' }, month: { color: colors.muted, fontSize: 9, fontWeight: '800' }, tripInfo: { flex: 1, gap: 4 }, tripName: { color: colors.text, fontSize: 16, fontWeight: '800' }, tripMeta: { color: colors.muted, fontSize: 12 }, price: { maxWidth: 105, color: colors.text, fontSize: 15, fontWeight: '900', textAlign: 'right' }, deleteButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center' },
 });

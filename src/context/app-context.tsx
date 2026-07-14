@@ -5,7 +5,7 @@ import { krakowTariffs, mergeKrakowDefaults } from '@/constants/krakow-tariffs';
 import { useI18n } from '@/i18n';
 import { calculateFare, createId } from '@/lib/meter';
 import { storage } from '@/lib/storage';
-import { applyLocationToTrip } from '@/lib/trip-tracking';
+import { applyLocationToTrip, projectTripTime } from '@/lib/trip-tracking';
 import { getKrakowTariffPeriod, resolveStartingTariff } from '@/lib/tariff-period';
 import { appendTariffSegment } from '@/lib/tariff-switch';
 import {
@@ -20,6 +20,7 @@ const defaultTariffs = krakowTariffs;
 type AppValue = {
   ready: boolean; tariffs: Tariff[]; trips: Trip[]; activeTrip: Trip | null;
   selectedTariffId: string; elapsedSeconds: number;
+  displayTrip: Trip | null;
   gpsStale: boolean;
   recommendedPeriod: 'day' | 'night' | null;
   zoneMode: 'single' | 'cross'; setZoneMode: (mode: 'single' | 'cross') => void;
@@ -46,13 +47,15 @@ export function AppProvider({ children }: PropsWithChildren) {
   const foregroundSubscription = useRef<Location.LocationSubscription | null>(null);
   const tariffSwitchPromise = useRef<Promise<boolean> | null>(null);
   const tripStartPromise = useRef<Promise<boolean> | null>(null);
+  const locationRecoveryInFlight = useRef(false);
+  const lastLocationRecoveryAt = useRef(0);
   const activeTripStatus = activeTrip?.status;
   const activeTripId = activeTrip?.id;
 
   const beginForegroundFallback = async () => {
     foregroundSubscription.current?.remove();
     foregroundSubscription.current = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.High, timeInterval: 3000, distanceInterval: 5 },
+      { accuracy: Location.Accuracy.High, timeInterval: 1000, distanceInterval: 0 },
       (location) => {
         setActiveTrip((current) => {
           if (!current || current.status !== 'active') return current;
@@ -106,6 +109,28 @@ export function AppProvider({ children }: PropsWithChildren) {
   }, [activeTripStatus, activeTripId]);
 
   useEffect(() => {
+    if (activeTripStatus !== 'active') return;
+    const referenceTimestamp = activeTrip?.points.at(-1)?.timestamp ?? new Date(activeTrip?.startedAt ?? 0).getTime();
+    const updateDelay = now - referenceTimestamp;
+    if (updateDelay < 12_000 || now - lastLocationRecoveryAt.current < 12_000 || locationRecoveryInFlight.current) return;
+    locationRecoveryInFlight.current = true;
+    lastLocationRecoveryAt.current = now;
+    const recoveryTripId = activeTrip?.id;
+    Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.BestForNavigation })
+      .then((location) => {
+        setActiveTrip((current) => {
+          if (!current || current.id !== recoveryTripId || current.status !== 'active') return current;
+          const next = applyLocationToTrip(current, location);
+          if (next === current) return current;
+          void storage.setActiveTrip(next);
+          return next;
+        });
+      })
+      .catch(() => undefined)
+      .finally(() => { locationRecoveryInFlight.current = false; });
+  }, [activeTrip, activeTripStatus, now]);
+
+  useEffect(() => {
     if (!ready || activeTripStatus !== 'active') return;
     Location.getForegroundPermissionsAsync().then(({ granted }) => {
       if (granted) return startTracking().catch(() => undefined);
@@ -131,6 +156,8 @@ export function AppProvider({ children }: PropsWithChildren) {
       Alert.alert(t('locationTitle'), t('locationBody')); return false;
     }
     if (Platform.OS === 'web') return true;
+    const existingBackground = await Location.getBackgroundPermissionsAsync();
+    if (existingBackground.granted) return true;
     if (!(await confirmBackgroundPermission())) return false;
     const background = await Location.requestBackgroundPermissionsAsync();
     if (!background.granted) {
@@ -244,12 +271,14 @@ export function AppProvider({ children }: PropsWithChildren) {
   const togglePause = async () => {
     if (!activeTrip) return;
     const nextStatus = activeTrip.status === 'paused' ? 'active' : 'paused';
+    const transitionTimestamp = Date.now();
     if (nextStatus === 'paused') {
       foregroundSubscription.current?.remove(); foregroundSubscription.current = null;
       await stopBackgroundLocation();
     }
     const storedTrip = nextStatus === 'paused' ? await storage.getActiveTrip() : null;
-    const latestTrip = storedTrip?.id === activeTrip.id ? storedTrip : activeTrip;
+    const persistedTrip = storedTrip?.id === activeTrip.id ? storedTrip : activeTrip;
+    const latestTrip = nextStatus === 'paused' ? projectTripTime(persistedTrip, transitionTimestamp) : persistedTrip;
     const next: Trip = {
       ...latestTrip,
       status: nextStatus,
@@ -263,8 +292,10 @@ export function AppProvider({ children }: PropsWithChildren) {
     foregroundSubscription.current?.remove(); foregroundSubscription.current = null;
     await stopBackgroundLocation();
     const stored = await storage.getActiveTrip();
-    const latest = stored?.id === activeTrip.id ? stored : activeTrip;
-    const endedAt = new Date().toISOString();
+    const endedAtTimestamp = Date.now();
+    const persistedTrip = stored?.id === activeTrip.id ? stored : activeTrip;
+    const latest = projectTripTime(persistedTrip, endedAtTimestamp);
+    const endedAt = new Date(endedAtTimestamp).toISOString();
     const finished: Trip = {
       ...latest, status: 'completed', endedAt,
       tariffSegments: latest.tariffSegments?.map((segment, index, all) => index === all.length - 1 ? { ...segment, endedAt } : segment),
@@ -284,8 +315,9 @@ export function AppProvider({ children }: PropsWithChildren) {
   const lastPointTimestamp = activeTrip?.points.at(-1)?.timestamp;
   const gpsReferenceTimestamp = lastPointTimestamp ?? (activeTrip ? new Date(activeTrip.startedAt).getTime() : undefined);
   const gpsStale = activeTrip?.status === 'active' && !!gpsReferenceTimestamp && now > 0 && now - gpsReferenceTimestamp > 30_000;
+  const displayTrip = activeTrip ? projectTripTime(activeTrip, now) : null;
   const recommendedPeriod = now > 0 ? getKrakowTariffPeriod(new Date(now)) : null;
-  const value: AppValue = ({ ready, tariffs, trips, activeTrip, selectedTariffId, elapsedSeconds, gpsStale, recommendedPeriod, zoneMode, setZoneMode,
+  const value: AppValue = ({ ready, tariffs, trips, activeTrip, displayTrip, selectedTariffId, elapsedSeconds, gpsStale, recommendedPeriod, zoneMode, setZoneMode,
     setSelectedTariffId, saveTariff, saveTariffs, deleteTariff, deleteTariffGroup, setDefaultTariff, deleteTrip, switchTripTariff, startTrip, togglePause, finishTrip,
   });
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

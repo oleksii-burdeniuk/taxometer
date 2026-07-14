@@ -2,11 +2,14 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '@/constants/colors';
+import { ThemeColors } from '@/constants/colors';
+import { useTheme, useThemedStyles } from '@/context/theme-context';
 import { useI18n } from '@/i18n';
 
 export default function TabsLayout() {
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === 'web' ? 10 : Math.max(insets.bottom, 10);
 
@@ -17,7 +20,7 @@ export default function TabsLayout() {
         headerShown: false,
         sceneStyle: styles.scene,
         tabBarActiveTintColor: colors.text,
-        tabBarInactiveTintColor: '#93989F',
+        tabBarInactiveTintColor: colors.tabInactive,
         tabBarLabelPosition: 'below-icon',
         tabBarLabelStyle: styles.label,
         tabBarIconStyle: styles.tabIcon,
@@ -57,14 +60,14 @@ export default function TabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   scene: { backgroundColor: colors.background },
   tabBar: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     paddingTop: 7,
-    shadowColor: '#000',
+    shadowColor: colors.background,
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.04,
     shadowRadius: 9,

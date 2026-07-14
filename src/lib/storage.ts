@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Language, Tariff, Trip } from '@/types';
+import { Language, Tariff, ThemePreference, Trip } from '@/types';
 
 const KEYS = {
   tariffs: '@taxometer/tariffs',
@@ -7,6 +7,7 @@ const KEYS = {
   activeTrip: '@taxometer/active-trip',
   language: '@taxometer/language',
   receiptLanguage: '@taxometer/receipt-language',
+  theme: '@taxometer/theme',
   defaultTariffId: '@taxometer/default-tariff-id',
 };
 
@@ -33,6 +34,8 @@ export const storage = {
   setLanguage: (language: Language) => AsyncStorage.setItem(KEYS.language, JSON.stringify(language)),
   getReceiptLanguage: () => read<Language | null>(KEYS.receiptLanguage, null),
   setReceiptLanguage: (language: Language) => AsyncStorage.setItem(KEYS.receiptLanguage, JSON.stringify(language)),
+  getTheme: () => read<ThemePreference>(KEYS.theme, 'system'),
+  setTheme: (theme: ThemePreference) => AsyncStorage.setItem(KEYS.theme, JSON.stringify(theme)),
   getDefaultTariffId: () => read<string | null>(KEYS.defaultTariffId, null),
   setDefaultTariffId: (id: string) => AsyncStorage.setItem(KEYS.defaultTariffId, JSON.stringify(id)),
 };

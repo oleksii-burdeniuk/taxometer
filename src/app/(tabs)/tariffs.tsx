@@ -2,9 +2,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Card, Field, ScreenHeader, sharedStyles } from '@/components/ui';
-import { colors } from '@/constants/colors';
+import { Button, Card, Field, ScreenHeader, useSharedStyles } from '@/components/ui';
+import { ThemeColors } from '@/constants/colors';
 import { useApp } from '@/context/app-context';
+import { useTheme, useThemedStyles } from '@/context/theme-context';
 import { useI18n } from '@/i18n';
 import { confirmAction } from '@/lib/confirm-action';
 import { createId, formatMoney, getCrossoverSpeedKmh } from '@/lib/meter';
@@ -52,6 +53,9 @@ function formFromTariffs(items: Tariff[]): Form {
 
 export default function TariffsScreen() {
   const { t, locale } = useI18n();
+  const { colors } = useTheme();
+  const sharedStyles = useSharedStyles();
+  const styles = useThemedStyles(createStyles);
   const { tariffs, activeTrip, saveTariff, saveTariffs, deleteTariff, deleteTariffGroup, setDefaultTariff } = useApp();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<Form | null>(null);
@@ -132,19 +136,19 @@ export default function TariffsScreen() {
   };
 
   return <SafeAreaView edges={['top']} style={sharedStyles.screen}>
-    <ScreenHeader title={t('tariffs')} action={<Pressable accessibilityRole="button" disabled={!!activeTrip} onPress={() => setForm(emptyForm())} style={[styles.add, activeTrip && styles.disabled]}><Ionicons name="add" size={25} /><Text style={styles.addText}>{t('addTariff')}</Text></Pressable>} />
+    <ScreenHeader title={t('tariffs')} action={<Pressable accessibilityRole="button" disabled={!!activeTrip} onPress={() => setForm(emptyForm())} style={[styles.add, activeTrip && styles.disabled]}><Ionicons name="add" size={25} color={colors.dark} /><Text style={styles.addText}>{t('addTariff')}</Text></Pressable>} />
     <ScrollView contentContainerStyle={sharedStyles.content}>
       {groups.map(({ id, items }) => {
         const first = items[0];
         const zoned = first.kind === 'zoned' || !!first.groupId;
         return <Card key={id} style={styles.tariffCard}>
           <View style={styles.groupHeader}>
-            <View style={styles.nameRow}><View style={[styles.icon, items.some((tariff) => tariff.isDefault) && styles.iconDefault]}><Ionicons name="car-sport-outline" size={22} /></View><View style={styles.nameText}><Text style={styles.name}>{zoned ? first.groupName : first.name}</Text><Text style={styles.currency}>{first.currency} · {first.isOfficial ? t('officialPreset') : zoned ? t('zonedTariff') : t('singleTariff')}</Text></View></View>
+            <View style={styles.nameRow}><View style={[styles.icon, items.some((tariff) => tariff.isDefault) && styles.iconDefault]}><Ionicons name="car-sport-outline" size={22} color={items.some((tariff) => tariff.isDefault) ? colors.dark : colors.text} /></View><View style={styles.nameText}><Text style={styles.name}>{zoned ? first.groupName : first.name}</Text><Text style={styles.currency}>{first.currency} · {first.isOfficial ? t('officialPreset') : zoned ? t('zonedTariff') : t('singleTariff')}</Text></View></View>
             {!first.isOfficial && <Pressable accessibilityLabel={t('editTariff')} accessibilityRole="button" disabled={!!activeTrip} hitSlop={8} onPress={() => setForm(formFromTariffs(items))}><Ionicons name="create-outline" size={21} color={colors.blue} /></Pressable>}
           </View>
           <View style={styles.rateList}>{items.map((tariff) => <View key={tariff.id} style={styles.variantRow}>
             <View style={styles.variantInfo}><Text style={styles.variantName}>{zoned ? `${tariff.zone === 'I' ? t('zoneOne') : t('zoneTwo')} · ${tariff.period === 'day' ? t('day') : t('nightHoliday')}` : t('pricePerKm')}</Text><Text style={styles.variantMeta}>{formatMoney(tariff.pricePerKm, tariff.currency, locale)}/km · {t('crossoverSpeed')} {Number.isFinite(getCrossoverSpeedKmh(tariff)) ? getCrossoverSpeedKmh(tariff).toFixed(1) : '∞'} km/h</Text></View>
-            <Pressable accessibilityLabel={tariff.isDefault ? t('default') : t('makeDefault')} accessibilityRole="radio" accessibilityState={{ checked: tariff.isDefault, disabled: !!activeTrip }} disabled={!!activeTrip} onPress={() => setDefaultTariff(tariff.id)} style={[styles.defaultControl, tariff.isDefault && styles.defaultControlActive]}>{tariff.isDefault ? <Ionicons name="checkmark" size={15} color="#fff" /> : <Text style={styles.defaultControlText}>{t('makeDefault')}</Text>}</Pressable>
+            <Pressable accessibilityLabel={tariff.isDefault ? t('default') : t('makeDefault')} accessibilityRole="radio" accessibilityState={{ checked: tariff.isDefault, disabled: !!activeTrip }} disabled={!!activeTrip} onPress={() => setDefaultTariff(tariff.id)} style={[styles.defaultControl, tariff.isDefault && styles.defaultControlActive]}>{tariff.isDefault ? <Ionicons name="checkmark" size={15} color={colors.onDark} /> : <Text style={styles.defaultControlText}>{t('makeDefault')}</Text>}</Pressable>
           </View>)}</View>
           <View style={styles.summaryRow}><Text style={styles.summaryText}>{t('baseFare')}: {formatMoney(first.baseFare, first.currency, locale)} · {t('waitingRate')}: {formatMoney(first.waitingPerMinute * 60, first.currency, locale)}</Text></View>
           {!first.isOfficial && !activeTrip && <Pressable accessibilityRole="button" onPress={() => removeGroup(id, items)} style={styles.deleteAction}><Ionicons name="trash-outline" size={17} color={colors.danger} /><Text style={styles.deleteText}>{zoned ? t('deleteSet') : t('delete')}</Text></Pressable>}
@@ -180,17 +184,17 @@ export default function TariffsScreen() {
   </SafeAreaView>;
 }
 
-const styles = StyleSheet.create({
-  add: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 15 }, addText: { fontWeight: '800', fontSize: 13 }, disabled: { opacity: 0.35 },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  add: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 15 }, addText: { color: colors.dark, fontWeight: '800', fontSize: 13 }, disabled: { opacity: 0.35 },
   tariffCard: { padding: 0, overflow: 'hidden' }, groupHeader: { padding: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, nameRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }, nameText: { flex: 1 },
-  icon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#F0F1F3', alignItems: 'center', justifyContent: 'center' }, iconDefault: { backgroundColor: colors.primary }, name: { fontSize: 17, fontWeight: '800' }, currency: { color: colors.muted, fontSize: 11, marginTop: 3 },
+  icon: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }, iconDefault: { backgroundColor: colors.primary }, name: { color: colors.text, fontSize: 17, fontWeight: '800' }, currency: { color: colors.muted, fontSize: 11, marginTop: 3 },
   rateList: { borderTopWidth: 1, borderColor: colors.border }, variantRow: { minHeight: 64, paddingHorizontal: 17, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderColor: colors.border }, variantInfo: { flex: 1 }, variantName: { color: colors.text, fontSize: 13, fontWeight: '800' }, variantMeta: { color: colors.muted, fontSize: 10, marginTop: 4 },
   defaultControl: { minWidth: 44, minHeight: 40, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }, defaultControlActive: { backgroundColor: colors.dark, borderColor: colors.dark }, defaultControlText: { color: colors.blue, fontSize: 9, fontWeight: '800' },
-  summaryRow: { paddingHorizontal: 17, paddingVertical: 11, backgroundColor: '#FAFAF8' }, summaryText: { color: colors.muted, fontSize: 10 }, deleteAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }, deleteText: { color: colors.danger, fontWeight: '700', fontSize: 12 },
-  modal: { flex: 1, backgroundColor: colors.background }, modalHeader: { height: 58, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: colors.border }, modalTitle: { flexShrink: 1, fontSize: 17, fontWeight: '800', textAlign: 'center' }, cancel: { color: colors.blue, width: 82 }, modalHeaderSpacer: { width: 82 }, form: { padding: 20, gap: 18 },
-  fieldLabel: { color: colors.muted, fontSize: 13, fontWeight: '700', marginBottom: -10 }, sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '900', marginBottom: -5 }, segmented: { flexDirection: 'row', padding: 4, borderRadius: 15, backgroundColor: '#E9EAEC' }, segment: { flex: 1, minHeight: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, segmentActive: { backgroundColor: colors.dark }, segmentText: { color: colors.muted, fontWeight: '800' }, segmentTextActive: { color: '#fff' },
-  currencyRow: { flexDirection: 'row', gap: 8 }, currencyButton: { flex: 1, height: 45, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderRadius: 13, borderWidth: 1, borderColor: colors.border }, currencySelected: { backgroundColor: colors.dark, borderColor: colors.dark }, currencyText: { fontWeight: '800' }, currencyTextSelected: { color: '#fff' },
+  summaryRow: { paddingHorizontal: 17, paddingVertical: 11, backgroundColor: colors.surfaceAlt }, summaryText: { color: colors.muted, fontSize: 10 }, deleteAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }, deleteText: { color: colors.danger, fontWeight: '700', fontSize: 12 },
+  modal: { flex: 1, backgroundColor: colors.background }, modalHeader: { height: 58, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: colors.border }, modalTitle: { flexShrink: 1, color: colors.text, fontSize: 17, fontWeight: '800', textAlign: 'center' }, cancel: { color: colors.blue, width: 82 }, modalHeaderSpacer: { width: 82 }, form: { padding: 20, gap: 18 },
+  fieldLabel: { color: colors.muted, fontSize: 13, fontWeight: '700', marginBottom: -10 }, sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '900', marginBottom: -5 }, segmented: { flexDirection: 'row', padding: 4, borderRadius: 15, backgroundColor: colors.surfaceAlt }, segment: { flex: 1, minHeight: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, segmentActive: { backgroundColor: colors.dark }, segmentText: { color: colors.muted, fontWeight: '800' }, segmentTextActive: { color: colors.onDark },
+  currencyRow: { flexDirection: 'row', gap: 8 }, currencyButton: { flex: 1, height: 45, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 13, borderWidth: 1, borderColor: colors.border }, currencySelected: { backgroundColor: colors.dark, borderColor: colors.dark }, currencyText: { color: colors.text, fontWeight: '800' }, currencyTextSelected: { color: colors.onDark },
   twoColumns: { flexDirection: 'row', gap: 12 }, flexField: { flex: 1 }, save: { marginTop: 8 },
-  crossoverInfo: { gap: 12, padding: 14, borderRadius: 15, backgroundColor: '#EDF4FF' }, crossoverHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 }, crossoverInfoText: { flex: 1, gap: 2 }, crossoverInfoValue: { color: colors.text, fontSize: 14, fontWeight: '900' }, crossoverAuto: { color: colors.blue, fontSize: 11, fontWeight: '700' },
-  crossoverRows: { overflow: 'hidden', borderRadius: 11, borderWidth: 1, borderColor: '#D7E5FA', backgroundColor: '#fff' }, crossoverRow: { minHeight: 54, paddingHorizontal: 11, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#D7E5FA' }, crossoverRate: { flex: 1, gap: 3 }, crossoverLabel: { color: colors.text, fontSize: 11, fontWeight: '800' }, crossoverFormula: { color: colors.muted, fontSize: 9 }, crossoverResult: { color: colors.text, fontSize: 13, fontWeight: '900' }, crossoverInfoHint: { color: colors.muted, fontSize: 11, lineHeight: 16 },
+  crossoverInfo: { gap: 12, padding: 14, borderRadius: 15, backgroundColor: colors.blueSoft }, crossoverHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 }, crossoverInfoText: { flex: 1, gap: 2 }, crossoverInfoValue: { color: colors.text, fontSize: 14, fontWeight: '900' }, crossoverAuto: { color: colors.blue, fontSize: 11, fontWeight: '700' },
+  crossoverRows: { overflow: 'hidden', borderRadius: 11, borderWidth: 1, borderColor: colors.blueBorder, backgroundColor: colors.surface }, crossoverRow: { minHeight: 54, paddingHorizontal: 11, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.blueBorder }, crossoverRate: { flex: 1, gap: 3 }, crossoverLabel: { color: colors.text, fontSize: 11, fontWeight: '800' }, crossoverFormula: { color: colors.muted, fontSize: 9 }, crossoverResult: { color: colors.text, fontSize: 13, fontWeight: '900' }, crossoverInfoHint: { color: colors.muted, fontSize: 11, lineHeight: 16 },
 });

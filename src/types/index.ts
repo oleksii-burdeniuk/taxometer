@@ -1,4 +1,5 @@
 export type Language = 'uk' | 'en' | 'pl';
+export type ThemePreference = 'system' | 'light' | 'dark';
 export type TariffKind = 'single' | 'zoned';
 
 export type Tariff = {
