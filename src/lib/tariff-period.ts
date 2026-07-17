@@ -33,8 +33,32 @@ export function getKrakowTariffPeriod(date: Date): 'day' | 'night' {
   return hour < 6 || hour >= 22 || date.getDay() === 0 || isPolishPublicHoliday(date) ? 'night' : 'day';
 }
 
+const minutesOfDay = (date: Date) => date.getHours() * 60 + date.getMinutes();
+
+function isTimeInRange(value: number, start: number, end: number) {
+  if (start === end) return true;
+  return start < end ? value >= start && value < end : value >= start || value < end;
+}
+
+export function isTariffScheduledNow(tariff: Tariff, date: Date) {
+  const schedule = tariff.schedule ?? (tariff.period === 'day'
+    ? { kind: 'weekday' as const, startMinutes: 360, endMinutes: 1320 }
+    : tariff.period === 'night'
+      ? { kind: 'nightHoliday' as const, startMinutes: 1320, endMinutes: 360 }
+      : undefined);
+  if (!schedule || schedule.kind === 'always') return true;
+  const holiday = date.getDay() === 0 || isPolishPublicHoliday(date);
+  if (schedule.kind === 'weekday' && holiday) return false;
+  if (schedule.kind === 'nightHoliday' && holiday) return true;
+  return isTimeInRange(minutesOfDay(date), schedule.startMinutes, schedule.endMinutes);
+}
+
 export function resolveStartingTariff(tariffs: Tariff[], selected: Tariff, date: Date) {
-  if (selected.kind !== 'zoned' || !selected.groupId || !selected.zone) return selected;
-  const period = getKrakowTariffPeriod(date);
-  return tariffs.find((tariff) => tariff.groupId === selected.groupId && tariff.zone === selected.zone && tariff.period === period) ?? selected;
+  if (selected.kind !== 'zoned' || !selected.groupId) return selected;
+  if (isTariffScheduledNow(selected, date)) return selected;
+  const group = tariffs.filter((tariff) => tariff.groupId === selected.groupId);
+  const sameZone = selected.zone ? group.filter((tariff) => tariff.zone === selected.zone) : group;
+  return sameZone.find((tariff) => isTariffScheduledNow(tariff, date))
+    ?? group.find((tariff) => isTariffScheduledNow(tariff, date))
+    ?? selected;
 }

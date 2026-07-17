@@ -1,5 +1,6 @@
 import { PropsWithChildren, ReactNode } from 'react';
-import { ActivityIndicator, Pressable, PressableProps, StyleProp, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, PressableProps, StyleProp, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
+import { KEYBOARD_DISMISS_ACCESSORY_ID } from '@/components/keyboard-dismiss-accessory';
 import { ThemeColors } from '@/constants/colors';
 import { useTheme, useThemedStyles } from '@/context/theme-context';
 
@@ -24,10 +25,10 @@ export function Button({ label, variant = 'primary', loading, style, ...props }:
   );
 }
 
-export function Field({ label, containerStyle, ...props }: TextInputProps & { label: string; containerStyle?: StyleProp<ViewStyle> }) {
+export function Field({ label, containerStyle, compact = false, ...props }: TextInputProps & { label: string; containerStyle?: StyleProp<ViewStyle>; compact?: boolean }) {
   const { colors } = useTheme();
   const styles = useComponentStyles();
-  return <View style={[styles.field, containerStyle]}><Text style={styles.fieldLabel}>{label}</Text><TextInput accessibilityLabel={label} selectionColor={colors.primary} {...props} placeholderTextColor={colors.placeholder} style={[styles.input, props.style]} /></View>;
+  return <View style={[styles.field, compact && styles.fieldCompact, containerStyle]}><Text style={[styles.fieldLabel, compact && styles.fieldLabelCompact]}>{label}</Text><TextInput accessibilityLabel={label} selectionColor={colors.primary} {...props} inputAccessoryViewID={props.inputAccessoryViewID ?? (Platform.OS === 'ios' ? KEYBOARD_DISMISS_ACCESSORY_ID : undefined)} placeholderTextColor={colors.placeholder} style={[styles.input, compact && styles.inputCompact, props.style]} /></View>;
 }
 
 export function Stat({ label, value }: { label: string; value: string }) {
@@ -59,6 +60,7 @@ const createComponentStyles = (colors: ThemeColors) => StyleSheet.create({
   pressed: { opacity: 0.78, transform: [{ scale: 0.99 }] }, disabled: { opacity: 0.45 },
   field: { gap: 7 }, fieldLabel: { color: colors.muted, fontSize: 13, fontWeight: '700' },
   input: { height: 52, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.input, paddingHorizontal: 14, color: colors.text, fontSize: 16 },
+  fieldCompact: { gap: 5 }, fieldLabelCompact: { fontSize: 11 }, inputCompact: { height: 44, borderRadius: 12, paddingHorizontal: 12, fontSize: 15 },
   stat: { flex: 1, minWidth: 0, alignItems: 'center', gap: 4, paddingHorizontal: 3 }, statValue: { width: '100%', color: colors.text, fontSize: 20, fontWeight: '800', textAlign: 'center' },
   statLabel: { color: colors.muted, fontSize: 11, fontWeight: '600' },
 });

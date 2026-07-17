@@ -23,7 +23,7 @@ const validSpeed = (speed: number | null | undefined): speed is number =>
   typeof speed === 'number' && Number.isFinite(speed) && speed >= 0;
 
 export function applyLocationToTrip(trip: Trip, location: Location.LocationObject): Trip {
-  if (trip.status !== 'active') return trip;
+  if (trip.status !== 'active' || trip.meterEnabled === false) return trip;
   const point = locationToPoint(location);
   const previous = trip.points.at(-1);
   if (previous && point.timestamp <= previous.timestamp) return trip;
@@ -76,7 +76,7 @@ export function applyLocationToTrip(trip: Trip, location: Location.LocationObjec
  * route point. The projection is capped at the verified-gap limit used for billing.
  */
 export function projectTripTime(trip: Trip, timestamp: number): Trip {
-  if (trip.status !== 'active') return trip;
+  if (trip.status !== 'active' || trip.meterEnabled === false) return trip;
   const point = trip.points.at(-1);
   if (!point || point.timestamp < (trip.trackingResumedAt ?? 0)) return trip;
   const accuracyIsAcceptable = point.accuracy === null || point.accuracy === undefined || point.accuracy <= MAX_GPS_ACCURACY_METERS;

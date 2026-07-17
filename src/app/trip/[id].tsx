@@ -40,6 +40,7 @@ export default function TripSummaryScreen() {
   const end = new Date(trip.endedAt ?? trip.startedAt);
   const duration = Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
   const fare = getTripFareBreakdown(trip);
+  const isMeteredRide = trip.meterEnabled !== false;
   const money = (value: number) => formatMoney(value, trip.tariff.currency, receiptLocale);
   const segments = trip.tariffSegments ?? [];
   const tariffNames = segments.map((segment) => segment.tariff.name);
@@ -59,6 +60,8 @@ export default function TripSummaryScreen() {
         time: receiptT('time'), waiting: receiptT('waiting'), total: receiptT('total'), baseCharge: receiptT('baseCharge'),
         distanceCharge: receiptT('distanceCharge'), waitingCharge: receiptT('waitingCharge'),
         minimumAdjustment: receiptT('minimumAdjustment'), includedAllowance: receiptT('includedAllowance'),
+        meteredFare: receiptT('meteredFare'), agreedFare: receiptT('agreedFare'), discount: receiptT('discount'),
+        pickupAddress: receiptT('pickupAddress'), dropoffAddress: receiptT('dropoffAddress'), fixedPriceRide: receiptT('fixedPriceRide'),
         thankYou: receiptT('thankYou'), notFiscal: receiptT('notFiscal'),
       });
     } catch { Alert.alert(t('receipt'), t('receiptError')); }
@@ -76,7 +79,7 @@ export default function TripSummaryScreen() {
 
   return <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
     <View style={styles.header}>
-      <Pressable accessibilityLabel={t('close')} accessibilityRole="button" onPress={() => router.replace('/')} style={styles.closeButton}><Ionicons name="close" size={24} color="#fff" /></Pressable>
+      <Pressable accessibilityLabel={t('back')} accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.closeButton}><Ionicons name="chevron-back" size={24} color="#fff" /></Pressable>
       <Text style={styles.headerTitle}>{t('tripSummary')}</Text>
       <View style={styles.headerSpacer} />
     </View>
@@ -89,20 +92,27 @@ export default function TripSummaryScreen() {
         <View style={styles.meta}>
           <ReceiptRow label={receiptT('started')} value={start.toLocaleString(receiptLocale, { dateStyle: 'short', timeStyle: 'short' })} />
           <ReceiptRow label={receiptT('finished')} value={end.toLocaleString(receiptLocale, { dateStyle: 'short', timeStyle: 'short' })} />
-          <ReceiptRow label={receiptT('tariff')} value={(tariffNames.length ? tariffNames : [trip.tariff.name]).join(' → ')} />
+          <ReceiptRow label={isMeteredRide ? receiptT('tariff') : receiptT('fixedPriceRide')} value={isMeteredRide ? (tariffNames.length ? tariffNames : [trip.tariff.name]).join(' → ') : receiptT('agreedFare')} />
+          {trip.pickupAddress && <ReceiptRow label={receiptT('pickupAddress')} value={trip.pickupAddress} />}
+          {trip.dropoffAddress && <ReceiptRow label={receiptT('dropoffAddress')} value={trip.dropoffAddress} />}
         </View>
         <DashedRule />
-        <View style={styles.stats}>
+        {isMeteredRide ? <View style={styles.stats}>
           <View style={styles.stat}><Text style={styles.statValue}>{(trip.distanceMeters / 1000).toFixed(2)} km</Text><Text style={styles.statLabel}>{receiptT('distance')}</Text></View>
           <View style={styles.stat}><Text style={styles.statValue}>{formatDuration(duration)}</Text><Text style={styles.statLabel}>{receiptT('time')}</Text></View>
           <View style={styles.stat}><Text style={styles.statValue}>{formatDuration(trip.waitingSeconds)}</Text><Text style={styles.statLabel}>{receiptT('waiting')}</Text></View>
-        </View>
+        </View> : <View style={styles.stats}><View style={styles.stat}><Text style={styles.statValue}>{formatDuration(duration)}</Text><Text style={styles.statLabel}>{receiptT('time')}</Text></View></View>}
         <DashedRule />
-        <ReceiptRow label={receiptT('baseCharge')} value={money(fare.baseCharge)} />
-        <ReceiptRow label={receiptT('distanceCharge')} value={money(fare.distanceCharge)} detail={distanceDetail || undefined} />
-        <ReceiptRow label={receiptT('waitingCharge')} value={money(fare.waitingCharge)} detail={waitingDetail || undefined} />
-        {fare.includedAllowance > 0 && <ReceiptRow label={receiptT('includedAllowance')} value={`−${money(fare.includedAllowance)}`} />}
-        {fare.minimumAdjustment > 0 && <ReceiptRow label={receiptT('minimumAdjustment')} value={money(fare.minimumAdjustment)} />}
+        {isMeteredRide && <>
+          <ReceiptRow label={receiptT('baseCharge')} value={money(fare.baseCharge)} />
+          <ReceiptRow label={receiptT('distanceCharge')} value={money(fare.distanceCharge)} detail={distanceDetail || undefined} />
+          <ReceiptRow label={receiptT('waitingCharge')} value={money(fare.waitingCharge)} detail={waitingDetail || undefined} />
+          {fare.includedAllowance > 0 && <ReceiptRow label={receiptT('includedAllowance')} value={`−${money(fare.includedAllowance)}`} />}
+          {fare.minimumAdjustment > 0 && <ReceiptRow label={receiptT('minimumAdjustment')} value={money(fare.minimumAdjustment)} />}
+        </>}
+        {isMeteredRide && (trip.agreedFare !== undefined || (trip.discountAmount ?? 0) > 0) && <ReceiptRow label={receiptT('meteredFare')} value={money(trip.meteredTotal ?? trip.total)} />}
+        {trip.agreedFare !== undefined && <ReceiptRow label={receiptT('agreedFare')} value={money(trip.agreedFare)} />}
+        {(trip.discountAmount ?? 0) > 0 && <ReceiptRow label={`${receiptT('discount')}${trip.discountPercent !== undefined ? ` (${trip.discountPercent}%)` : ''}`} value={`−${money(trip.discountAmount ?? 0)}`} />}
         <DashedRule />
         <View style={styles.totalRow}><Text style={styles.totalLabel}>{receiptT('total').toUpperCase()}</Text><Text style={styles.total}>{money(trip.total)}</Text></View>
         <Barcode value={trip.id} />

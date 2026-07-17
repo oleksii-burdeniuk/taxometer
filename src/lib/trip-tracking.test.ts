@@ -114,3 +114,13 @@ test('does not project across a pause or tariff-switch boundary', () => {
   const projected = projectTripTime({ ...current, trackingResumedAt: 2_000 }, 6_000);
   assert.equal(projected.waitingSeconds, 0);
 });
+
+test('never applies GPS or tariff billing to a fixed-price ride without the taximeter', () => {
+  const fixedPriceTrip = { ...trip(), meterEnabled: false, agreedFare: 50, total: 50 };
+  const located = applyLocationToTrip(fixedPriceTrip, location(10_000, 0.001, 10));
+  const projected = projectTripTime(located, 60_000);
+  assert.equal(located, fixedPriceTrip);
+  assert.equal(projected, fixedPriceTrip);
+  assert.equal(projected.total, 50);
+  assert.equal(projected.points.length, 0);
+});

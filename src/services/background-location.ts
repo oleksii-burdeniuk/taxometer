@@ -1,8 +1,10 @@
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { DeviceEventEmitter, Platform } from 'react-native';
+import { createExternalTripSnapshot } from '@/lib/external-trip';
 import { storage } from '@/lib/storage';
 import { applyLocationToTrip } from '@/lib/trip-tracking';
+import { updateExternalTripDisplay } from '@/services/external-trip-display';
 import { Trip } from '@/types';
 
 export const BACKGROUND_LOCATION_TASK = 'taxometer-background-location';
@@ -18,6 +20,8 @@ if (!TaskManager.isTaskDefined(BACKGROUND_LOCATION_TASK)) {
     if (!trip || trip.status !== 'active') return;
     for (const location of data.locations) trip = applyLocationToTrip(trip, location);
     await storage.setActiveTrip(trip);
+    const language = (await storage.getLanguage()) ?? 'uk';
+    await updateExternalTripDisplay(createExternalTripSnapshot(trip, Date.now(), language));
     DeviceEventEmitter.emit(BACKGROUND_LOCATION_EVENT, trip);
   });
 }
@@ -25,12 +29,13 @@ if (!TaskManager.isTaskDefined(BACKGROUND_LOCATION_TASK)) {
 export async function startBackgroundLocation(
   notificationTitle: string,
   notificationBody: string,
+  hasExternalAndroidForegroundService = false,
 ) {
   if (startPromise) return startPromise;
   startPromise = (async () => {
     if (Platform.OS === 'web' || !(await TaskManager.isAvailableAsync())) return false;
     if (await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK)) return true;
-    await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
+    const options: Location.LocationTaskOptions = {
       accuracy: Location.Accuracy.BestForNavigation,
       activityType: Location.ActivityType.AutomotiveNavigation,
       // A taximeter also needs location timestamps while the car is stopped.
@@ -41,12 +46,15 @@ export async function startBackgroundLocation(
       deferredUpdatesInterval: 0,
       pausesUpdatesAutomatically: false,
       showsBackgroundLocationIndicator: true,
-      foregroundService: {
+    };
+    if (!(Platform.OS === 'android' && hasExternalAndroidForegroundService)) {
+      options.foregroundService = {
         notificationTitle,
         notificationBody,
         killServiceOnDestroy: false,
-      },
-    });
+      };
+    }
+    await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, options);
     return true;
   })();
   try { return await startPromise; }

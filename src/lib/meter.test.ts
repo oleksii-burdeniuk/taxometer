@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { calculateFare, calculateTripFare, getCrossoverSpeedKmh } from '@/lib/meter';
+import { calculateFare, calculateTripFare, formatMoney, getCrossoverSpeedKmh } from '@/lib/meter';
 import type { Tariff, Trip } from '@/types';
 
 const tariff: Tariff = {
@@ -16,6 +16,10 @@ test('calculates the OIML/MI-007 cross-over speed from time and distance tariffs
 test('handles tariffs with only time or only distance charging', () => {
   assert.equal(getCrossoverSpeedKmh({ pricePerKm: 0, waitingPerMinute: 3 }), Infinity);
   assert.equal(getCrossoverSpeedKmh({ pricePerKm: 18, waitingPerMinute: 0 }), 0);
+});
+
+test('formats a custom ISO currency code', () => {
+  assert.match(formatMoney(12.5, 'GBP', 'en-GB'), /£12\.50/);
 });
 
 test('applies base fare, included tariff distance, time tariff and minimum fare', () => {

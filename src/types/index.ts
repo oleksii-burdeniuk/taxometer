@@ -1,11 +1,18 @@
 export type Language = 'uk' | 'en' | 'pl';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type TariffKind = 'single' | 'zoned';
+export type TariffScheduleKind = 'always' | 'weekday' | 'nightHoliday';
+
+export type TariffSchedule = {
+  kind: TariffScheduleKind;
+  startMinutes: number;
+  endMinutes: number;
+};
 
 export type Tariff = {
   id: string;
   name: string;
-  currency: 'UAH' | 'PLN' | 'EUR' | 'USD';
+  currency: string;
   baseFare: number;
   includedKm: number;
   pricePerKm: number;
@@ -13,10 +20,13 @@ export type Tariff = {
   minimumFare: number;
   isDefault: boolean;
   createdAt: string;
-  city?: 'Kraków';
+  city?: string;
   tariffNumber?: 1 | 2 | 3 | 4;
-  zone?: 'I' | 'II';
+  zone?: string;
   period?: 'day' | 'night';
+  variantLabel?: string;
+  schedule?: TariffSchedule;
+  showOnHome?: boolean;
   kind?: TariffKind;
   groupId?: string;
   groupName?: string;
@@ -52,8 +62,19 @@ export type Trip = {
   chargedDistanceMeters?: number;
   waitingSeconds: number;
   total: number;
+  /** Fixed price agreed with the passenger before the ride. */
+  agreedFare?: number;
+  /** False when a fixed-price ride is recorded without GPS taximeter billing. */
+  meterEnabled?: boolean;
+  pickupAddress?: string;
+  dropoffAddress?: string;
+  /** Taximeter result before an agreed price or discount was applied. */
+  meteredTotal?: number;
+  discountPercent?: number;
+  discountAmount?: number;
   points: TripPoint[];
   trackingResumedAt?: number;
+  pausedAt?: number;
   initialTariff?: Tariff;
   tariffSegments?: TripTariffSegment[];
   trackingWarning?: 'gps';
