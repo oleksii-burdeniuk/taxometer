@@ -127,8 +127,8 @@ export function FinishTripModal({
             </View>
 
             <View style={styles.discountHeader}>
-              <View><Text style={styles.sectionTitle}>{t('clientDiscount')}</Text><Text style={styles.sectionHint}>{discountMode === 'percent' ? t('discountHint') : t('finalPriceHint')}</Text></View>
-              <Text style={styles.discountValue}>{discountMode === 'percent' ? `${discountPercent}%` : money(Math.max(0, discountAmount))}</Text>
+              <View style={styles.discountCopy}><Text style={styles.sectionTitle}>{t('clientDiscount')}</Text><Text style={styles.sectionHint}>{discountMode === 'percent' ? t('discountHint') : t('finalPriceHint')}</Text></View>
+              <Text adjustsFontSizeToFit minimumFontScale={0.62} numberOfLines={1} style={styles.discountValue}>{discountMode === 'percent' ? `${discountPercent}%` : money(Math.max(0, discountAmount))}</Text>
             </View>
             <View style={styles.discountModes}>
               <Pressable accessibilityRole="radio" accessibilityState={{ checked: discountMode === 'percent' }} onPress={() => onDiscountModeChange('percent')} style={[styles.discountMode, discountMode === 'percent' && styles.discountModeActive]}><Text style={[styles.discountModeText, discountMode === 'percent' && styles.discountModeTextActive]}>{t('discountPercentMode')}</Text></Pressable>
@@ -181,9 +181,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   summaryLabel: { color: colors.muted, fontSize: 14, fontWeight: '700' }, summaryValue: { color: colors.text, fontSize: 17, fontWeight: '800' },
   summaryLabelStrong: { color: colors.text, fontSize: 14, fontWeight: '900' }, summaryValueStrong: { color: colors.text, fontSize: 21, fontWeight: '900' },
-  discountHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10, marginTop: 4 },
-  sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '900' }, sectionHint: { color: colors.muted, fontSize: 11, marginTop: 3 },
-  discountValue: { color: colors.text, fontSize: 29, fontWeight: '900' },
+  discountHeader: { minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginTop: 4 },
+  discountCopy: { flex: 1, minWidth: 0 },
+  sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '900' }, sectionHint: { color: colors.muted, fontSize: 11, lineHeight: 15, marginTop: 3 },
+  discountValue: { maxWidth: '42%', flexShrink: 1, color: colors.text, fontSize: 25, fontWeight: '900', textAlign: 'right' },
   quickRow: { flexDirection: 'row', gap: 8 },
   discountModes: { flexDirection: 'row', gap: 5, padding: 4, borderRadius: 14, backgroundColor: colors.surfaceAlt },
   discountMode: { flex: 1, minHeight: 40, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center', borderRadius: 11 }, discountModeActive: { backgroundColor: colors.surface },

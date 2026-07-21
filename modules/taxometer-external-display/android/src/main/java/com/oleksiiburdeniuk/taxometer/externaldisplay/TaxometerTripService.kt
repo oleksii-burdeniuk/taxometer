@@ -99,6 +99,7 @@ class TaxometerTripService : Service() {
           runCatching { TripDisplaySnapshot(JSONObject(json)) }.getOrNull()?.let {
             snapshot = it
             preferences(this).edit().putString(KEY_SNAPSHOT, json).apply()
+            TaxometerTripWidgetProvider.updateAll(this)
             promoteToForeground(it)
             renderOverlay(it)
           }
@@ -394,23 +395,36 @@ class TaxometerTripService : Service() {
     private const val KEY_COMPACT = "compact"
     private const val KEY_X = "overlay-x"
     private const val KEY_Y = "overlay-y"
+    private const val KEY_WIDGET_IDLE = "widget-idle"
 
     private fun preferences(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun start(context: Context, snapshotJson: String) {
+      preferences(context).edit().putString(KEY_SNAPSHOT, snapshotJson).apply()
+      TaxometerTripWidgetProvider.updateAll(context, force = true)
       val intent = Intent(context, TaxometerTripService::class.java).setAction(ACTION_START).putExtra(EXTRA_SNAPSHOT, snapshotJson)
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent) else context.startService(intent)
     }
 
     fun update(context: Context, snapshotJson: String) {
+      preferences(context).edit().putString(KEY_SNAPSHOT, snapshotJson).apply()
+      TaxometerTripWidgetProvider.updateAll(context)
       val intent = Intent(context, TaxometerTripService::class.java).setAction(ACTION_UPDATE).putExtra(EXTRA_SNAPSHOT, snapshotJson)
       runCatching { context.startService(intent) }
     }
 
-    fun stop(context: Context) {
+    fun stop(context: Context, idleJson: String? = null) {
+      preferences(context).edit()
+        .remove(KEY_SNAPSHOT)
+        .apply { if (idleJson.isNullOrBlank()) remove(KEY_WIDGET_IDLE) else putString(KEY_WIDGET_IDLE, idleJson) }
+        .apply()
+      TaxometerTripWidgetProvider.updateAll(context, force = true)
       runCatching { context.startService(Intent(context, TaxometerTripService::class.java).setAction(ACTION_STOP)) }
-      preferences(context).edit().remove(KEY_SNAPSHOT).apply()
     }
+
+    fun savedSnapshot(context: Context): String? = preferences(context).getString(KEY_SNAPSHOT, null)
+
+    fun savedWidgetIdle(context: Context): String? = preferences(context).getString(KEY_WIDGET_IDLE, null)
 
     fun isOverlayEnabled(context: Context): Boolean = preferences(context).getBoolean(KEY_OVERLAY_ENABLED, false)
 

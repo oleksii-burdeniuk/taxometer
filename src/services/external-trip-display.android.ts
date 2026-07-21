@@ -1,5 +1,6 @@
 import TaxometerExternalDisplay from '../../modules/taxometer-external-display';
-import type { ExternalTripSnapshot } from '@/lib/external-trip';
+import { getTripHomeWidgetIdleCopy, type ExternalTripSnapshot } from '@/lib/external-trip';
+import type { Language } from '@/types';
 
 export async function startExternalTripDisplay(snapshot: ExternalTripSnapshot) {
   try {
@@ -14,8 +15,14 @@ export async function updateExternalTripDisplay(snapshot: ExternalTripSnapshot) 
   try { await TaxometerExternalDisplay.updateAsync(JSON.stringify(snapshot)); } catch {}
 }
 
-export async function endExternalTripDisplay() {
-  try { await TaxometerExternalDisplay.stopAsync(); } catch {}
+export async function endExternalTripDisplay(_language?: Language) {
+  const language = _language ?? 'en';
+  const idle = JSON.stringify({
+    active: false,
+    idle: getTripHomeWidgetIdleCopy(language),
+    openUrl: 'taxometer://',
+  });
+  try { await TaxometerExternalDisplay.stopAsync(idle); } catch {}
 }
 
 export async function canUseTripOverlay() {

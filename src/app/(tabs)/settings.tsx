@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { AppState, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -41,6 +42,7 @@ function Selector<T extends string>({ options, selected, onSelect }: {
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { t, language, setLanguage, receiptLanguage, setReceiptLanguage } = useI18n();
   const { colors, preference, setPreference } = useTheme();
   const sharedStyles = useSharedStyles();
@@ -90,6 +92,17 @@ export default function SettingsScreen() {
     <SafeAreaView edges={['top']} style={sharedStyles.screen}>
       <ScreenHeader title={t('settings')} />
       <ScrollView contentContainerStyle={sharedStyles.content} showsVerticalScrollIndicator={false}>
+        <Text style={sharedStyles.label}>{t('taxiProfile')}</Text>
+        <Card style={styles.card}>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/taxi-profile')} style={styles.profileRow}>
+            <View style={styles.profileIcon}><Ionicons name="car-sport-outline" size={22} color={colors.dark} /></View>
+            <View style={styles.profileCopy}>
+              <Text style={styles.label}>{t('driverVehicleLicense')}</Text>
+              <Text style={styles.profileHint}>{t('taxiProfileHint')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+          </Pressable>
+        </Card>
         <Text style={sharedStyles.label}>{t('language')}</Text>
         <Selector options={options} selected={language} onSelect={setLanguage} />
         <Text style={[sharedStyles.label, styles.sectionLabel]}>{t('receiptLanguage')}</Text>
@@ -120,6 +133,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: { paddingVertical: 0 }, row: { height: 58, flexDirection: 'row', alignItems: 'center', gap: 12 },
   divider: { borderBottomWidth: 1, borderColor: colors.border }, flag: { fontSize: 24 },
   label: { flex: 1, color: colors.text, fontSize: 16, fontWeight: '700' }, sectionLabel: { marginTop: 4 },
+  profileRow: { minHeight: 78, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  profileIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
+  profileCopy: { flex: 1, minWidth: 0, gap: 3 },
+  profileHint: { color: colors.muted, fontSize: 11, lineHeight: 15 },
   overlayRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: 12 },
   overlayIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
   overlayIconActive: { backgroundColor: colors.primary }, overlayCopy: { flex: 1, gap: 3 },

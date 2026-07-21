@@ -13,7 +13,7 @@ import { formatMoney } from '@/lib/meter';
 export default function HistoryScreen() {
   const router = useRouter();
   const { t, locale } = useI18n();
-  const { trips, deleteTrip } = useApp();
+  const { trips, deleteTrip, taxiDataAccess } = useApp();
   const { colors } = useTheme();
   const sharedStyles = useSharedStyles();
   const styles = useThemedStyles(createStyles);
@@ -43,7 +43,7 @@ export default function HistoryScreen() {
             <View style={styles.tripInfo}><Text style={styles.tripName}>{trip.meterEnabled === false ? t('fixedPriceRide') : trip.tariff.name}</Text><Text style={styles.tripMeta}>{new Date(trip.startedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}{trip.meterEnabled === false ? (trip.pickupAddress || trip.dropoffAddress ? ` · ${[trip.pickupAddress, trip.dropoffAddress].filter(Boolean).join(' → ')}` : '') : ` · ${(trip.distanceMeters / 1000).toFixed(2)} km`}</Text></View>
             <Text numberOfLines={1} style={styles.price}>{formatMoney(trip.total, trip.tariff.currency, locale)}</Text>
           </Pressable>
-          <Pressable accessibilityLabel={t('deleteTrip')} accessibilityRole="button" hitSlop={8} onPress={(event) => confirmDelete(event, trip.id)} style={styles.deleteButton}><Ionicons name="trash-outline" size={19} color={colors.danger} /></Pressable>
+          {taxiDataAccess.canDeleteReceipts && <Pressable accessibilityLabel={t('deleteTrip')} accessibilityRole="button" hitSlop={8} onPress={(event) => confirmDelete(event, trip.id)} style={styles.deleteButton}><Ionicons name="trash-outline" size={19} color={colors.danger} /></Pressable>}
         </Card>
       ))}
     </ScrollView>

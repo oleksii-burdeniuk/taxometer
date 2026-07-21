@@ -5,7 +5,7 @@ import { TaxometerExternalDisplayModuleEvents } from './TaxometerExternalDisplay
 declare class TaxometerExternalDisplayModule extends NativeModule<TaxometerExternalDisplayModuleEvents> {
   startAsync(snapshotJson: string): Promise<void>;
   updateAsync(snapshotJson: string): Promise<void>;
-  stopAsync(): Promise<void>;
+  stopAsync(idleJson?: string): Promise<void>;
   canDrawOverlaysAsync(): Promise<boolean>;
   requestOverlayPermissionAsync(): Promise<void>;
   isOverlayEnabledAsync(): Promise<boolean>;

@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/widget_root"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="@drawable/taxometer_widget_background"
+  android:padding="18dp">
+
+  <LinearLayout
+    android:id="@+id/widget_active_content"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:gravity="center_vertical"
+      android:orientation="horizontal">
+      <ImageView
+        android:layout_width="34dp"
+        android:layout_height="34dp"
+        android:contentDescription="@string/taxometer_trip_widget_name"
+        android:src="@drawable/taxometer_widget_car" />
+      <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView
+          android:id="@+id/widget_status"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:ellipsize="end"
+          android:fontFamily="sans-serif-medium"
+          android:maxLines="1"
+          android:text="Active"
+          android:textColor="#38C989"
+          android:textSize="11sp" />
+        <TextView
+          android:id="@+id/widget_tariff"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:ellipsize="end"
+          android:fontFamily="sans-serif-medium"
+          android:maxLines="1"
+          android:text="Taryfa 1 · Strefa I"
+          android:textColor="#F7F7F7"
+          android:textSize="14sp" />
+      </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+      android:id="@+id/widget_amount"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_marginVertical="10dp"
+      android:layout_weight="1"
+      android:ellipsize="end"
+      android:fontFamily="sans-serif-black"
+      android:gravity="center"
+      android:maxLines="1"
+      android:text="PLN 28.40"
+      android:textColor="#F7F7F7"
+      android:textSize="42sp" />
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="66dp"
+      android:orientation="horizontal">
+      <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginEnd="5dp"
+        android:layout_weight="1"
+        android:background="@drawable/taxometer_widget_surface"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:paddingHorizontal="13dp">
+        <TextView
+          android:id="@+id/widget_time_label"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:fontFamily="sans-serif-medium"
+          android:text="TIME"
+          android:textColor="#A9ADB4"
+          android:textSize="9sp" />
+        <Chronometer
+          android:id="@+id/widget_time"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:fontFamily="sans-serif-medium"
+          android:maxLines="1"
+          android:textColor="#F7F7F7"
+          android:textSize="20sp" />
+      </LinearLayout>
+      <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="5dp"
+        android:layout_weight="1"
+        android:background="@drawable/taxometer_widget_surface"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:paddingHorizontal="13dp">
+        <TextView
+          android:id="@+id/widget_distance_label"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:fontFamily="sans-serif-medium"
+          android:text="DISTANCE"
+          android:textColor="#A9ADB4"
+          android:textSize="9sp" />
+        <TextView
+          android:id="@+id/widget_distance"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:ellipsize="end"
+          android:fontFamily="sans-serif-medium"
+          android:maxLines="1"
+          android:text="3.8 km"
+          android:textColor="#F7F7F7"
+          android:textSize="20sp" />
+      </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+      android:id="@+id/widget_tariff_label"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="10dp"
+      android:fontFamily="sans-serif-medium"
+      android:text="TARIFF"
+      android:textColor="#A9ADB4"
+      android:textSize="9sp" />
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="44dp"
+      android:layout_marginTop="9dp"
+      android:orientation="horizontal">
+      <TextView
+        android:id="@+id/widget_control"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginEnd="5dp"
+        android:layout_weight="1"
+        android:background="@drawable/taxometer_widget_button"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="center"
+        android:maxLines="1"
+        android:text="Ⅱ  Pause"
+        android:textColor="#111315"
+        android:textSize="12sp" />
+      <TextView
+        android:id="@+id/widget_open"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="5dp"
+        android:layout_weight="1"
+        android:background="@drawable/taxometer_widget_button_dark"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="center"
+        android:maxLines="1"
+        android:text="Open"
+        android:textColor="#F7F7F7"
+        android:textSize="12sp" />
+    </LinearLayout>
+  </LinearLayout>
+
+  <LinearLayout
+    android:id="@+id/widget_idle_content"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:visibility="gone">
+    <ImageView
+      android:layout_width="56dp"
+      android:layout_height="56dp"
+      android:contentDescription="@string/taxometer_trip_widget_name"
+      android:src="@drawable/taxometer_widget_car" />
+    <TextView
+      android:id="@+id/widget_idle_app_name"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:fontFamily="sans-serif-medium"
+      android:gravity="center"
+      android:maxLines="1"
+      android:text="Taxometer"
+      android:textColor="#FFCC00"
+      android:textSize="12sp" />
+    <TextView
+      android:id="@+id/widget_idle_title"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="5dp"
+      android:ellipsize="end"
+      android:fontFamily="sans-serif-black"
+      android:gravity="center"
+      android:maxLines="2"
+      android:text="Ready for a new trip"
+      android:textColor="#F7F7F7"
+      android:textSize="22sp" />
+    <TextView
+      android:id="@+id/widget_idle_hint"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="5dp"
+      android:ellipsize="end"
+      android:gravity="center"
+      android:maxLines="2"
+      android:text="Open the app to start"
+      android:textColor="#A9ADB4"
+      android:textSize="11sp" />
+    <TextView
+      android:id="@+id/widget_idle_open"
+      android:layout_width="160dp"
+      android:layout_height="44dp"
+      android:layout_marginTop="18dp"
+      android:background="@drawable/taxometer_widget_button"
+      android:fontFamily="sans-serif-medium"
+      android:gravity="center"
+      android:text="Open app"
+      android:textColor="#111315"
+      android:textSize="12sp" />
+  </LinearLayout>
+</FrameLayout>

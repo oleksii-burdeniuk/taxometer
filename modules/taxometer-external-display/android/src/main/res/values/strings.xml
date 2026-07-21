@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="taxometer_trip_widget_name">Taxometer</string>
+  <string name="taxometer_trip_widget_description">Current fare, time, distance and tariff for the active trip</string>
+</resources>

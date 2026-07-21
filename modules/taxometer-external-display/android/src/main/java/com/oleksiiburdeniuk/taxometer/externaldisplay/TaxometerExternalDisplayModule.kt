@@ -21,9 +21,9 @@ class TaxometerExternalDisplayModule : Module() {
       TaxometerTripService.update(context, snapshotJson)
     }
 
-    AsyncFunction("stopAsync") {
+    AsyncFunction("stopAsync") { idleJson: String? ->
       val context = requireNotNull(appContext.reactContext) { "Android context is unavailable" }
-      TaxometerTripService.stop(context)
+      TaxometerTripService.stop(context, idleJson)
     }
 
     AsyncFunction("canDrawOverlaysAsync") {

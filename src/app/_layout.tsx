@@ -15,6 +15,7 @@ function AppRoot() {
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
           <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
           <Stack.Screen name="statistics" options={{ animation: 'slide_from_right', presentation: 'card' }} />
+          <Stack.Screen name="taxi-profile" options={{ animation: 'slide_from_right', presentation: 'card' }} />
           <Stack.Screen name="trip/[id]" options={{ animation: 'slide_from_bottom', presentation: 'card' }} />
           <Stack.Screen name="active-trip" options={{ animation: 'none' }} />
           <Stack.Screen name="trip-control" options={{ animation: 'none' }} />

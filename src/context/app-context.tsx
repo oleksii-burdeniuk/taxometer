@@ -6,9 +6,11 @@ import { useI18n } from '@/i18n';
 import { createExternalTripSnapshot } from '@/lib/external-trip';
 import { calculateFare, createId } from '@/lib/meter';
 import { storage } from '@/lib/storage';
+import { createReceiptTaxiProfile, DEFAULT_TAXI_DATA_PREFERENCES, DEFAULT_TAXI_PROFILE_METADATA, normalizeTaxiProfile, resolveTaxiDataAccess } from '@/lib/taxi-profile';
 import { applyLocationToTrip, projectTripTime } from '@/lib/trip-tracking';
 import { resolveStartingTariff } from '@/lib/tariff-period';
 import { appendTariffSegment } from '@/lib/tariff-switch';
+import { taxiProfileRepository } from '@/repositories/taxi-profile-repository';
 import {
   endExternalTripDisplay,
   startExternalTripDisplay,
@@ -19,7 +21,7 @@ import {
   stopBackgroundLocation,
   subscribeToBackgroundLocation,
 } from '@/services/background-location';
-import { Tariff, Trip } from '@/types';
+import { Tariff, TaxiDataAccess, TaxiDataPreferences, TaxiProfile, TaxiProfileMetadata, Trip } from '@/types';
 
 const defaultTariffs = krakowTariffs;
 
@@ -29,6 +31,12 @@ type AppValue = {
   displayTrip: Trip | null;
   gpsStale: boolean;
   recommendedTariffId: string | null;
+  taxiProfile: TaxiProfile;
+  taxiProfileMetadata: TaxiProfileMetadata;
+  taxiDataPreferences: TaxiDataPreferences;
+  taxiDataAccess: TaxiDataAccess;
+  saveTaxiProfile: (profile: TaxiProfile) => Promise<boolean>;
+  setTaxiDataPreference: <K extends keyof TaxiDataPreferences>(key: K, value: TaxiDataPreferences[K]) => Promise<void>;
   setSelectedTariffId: (id: string) => void; saveTariff: (tariff: Tariff) => void;
   saveTariffs: (tariffs: Tariff[]) => void;
   deleteTariff: (id: string) => boolean; setDefaultTariff: (id: string) => void;
@@ -49,6 +57,10 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [selectedTariffId, setSelectedTariffId] = useState('krakow-t1');
+  const [taxiProfile, setTaxiProfile] = useState<TaxiProfile>({});
+  const [taxiProfileMetadata, setTaxiProfileMetadata] = useState<TaxiProfileMetadata>(DEFAULT_TAXI_PROFILE_METADATA);
+  const [taxiDataPreferences, setTaxiDataPreferences] = useState<TaxiDataPreferences>(DEFAULT_TAXI_DATA_PREFERENCES);
+  const taxiDataAccess = resolveTaxiDataAccess(taxiDataPreferences);
   const [now, setNow] = useState(Date.now);
   const foregroundSubscription = useRef<Location.LocationSubscription | null>(null);
   const tariffSwitchPromise = useRef<Promise<boolean> | null>(null);
@@ -86,11 +98,14 @@ export function AppProvider({ children }: PropsWithChildren) {
   };
 
   useEffect(() => {
-    Promise.all([storage.getTariffs(defaultTariffs), storage.getTrips(), storage.getActiveTrip(), storage.getDefaultTariffId()])
-      .then(([storedTariffs, storedTrips, storedActive, defaultTariffId]) => {
+    Promise.all([storage.getTariffs(defaultTariffs), storage.getTrips(), storage.getActiveTrip(), storage.getDefaultTariffId(), taxiProfileRepository.load()])
+      .then(([storedTariffs, storedTrips, storedActive, defaultTariffId, workProfile]) => {
         const migratedTariffs = mergeKrakowDefaults(storedTariffs, defaultTariffId);
         const homeTariffs = migratedTariffs.filter((tariff) => tariff.showOnHome !== false);
         setTariffs(migratedTariffs); setTrips(storedTrips); setActiveTrip(storedActive);
+        setTaxiProfile(workProfile.profile);
+        setTaxiDataPreferences(workProfile.preferences);
+        setTaxiProfileMetadata(workProfile.metadata);
         setSelectedTariffId(storedActive?.tariff.id ?? homeTariffs.find((item) => item.isDefault)?.id ?? homeTariffs[0]?.id ?? migratedTariffs[0].id);
         void storage.setTariffs(migratedTariffs);
         const migratedDefault = migratedTariffs.find((tariff) => tariff.isDefault);
@@ -160,6 +175,11 @@ export function AppProvider({ children }: PropsWithChildren) {
     void startExternalTripDisplay(createExternalTripSnapshot(activeTrip, activeTrip.pausedAt ?? Date.now(), language));
   }, [ready, activeTrip, activeTripId, language]);
 
+  useEffect(() => {
+    if (!ready || activeTrip) return;
+    void endExternalTripDisplay(language);
+  }, [ready, activeTrip, language]);
+
   useEffect(() => () => foregroundSubscription.current?.remove(), []);
 
   const confirmBackgroundPermission = () => new Promise<boolean>((resolve) => {
@@ -209,13 +229,33 @@ export function AppProvider({ children }: PropsWithChildren) {
   };
 
   const saveTariff = (tariff: Tariff) => {
+    if (!taxiDataAccess.canManageTariffs) return;
     setTariffs((current) => {
       const exists = current.some((item) => item.id === tariff.id);
       const next = exists ? current.map((item) => item.id === tariff.id ? tariff : item) : [...current, tariff];
       void storage.setTariffs(next); return next;
     });
   };
+  const saveTaxiProfile = async (profile: TaxiProfile) => {
+    if (!taxiDataAccess.canEditProfile) return false;
+    const normalized = normalizeTaxiProfile(profile);
+    const metadata: TaxiProfileMetadata = {
+      source: 'local',
+      revision: taxiProfileMetadata.revision + 1,
+      updatedAt: new Date().toISOString(),
+    };
+    setTaxiProfile(normalized);
+    setTaxiProfileMetadata(metadata);
+    await taxiProfileRepository.saveProfile(normalized, metadata);
+    return true;
+  };
+  const setTaxiDataPreference = async <K extends keyof TaxiDataPreferences>(key: K, preference: TaxiDataPreferences[K]) => {
+    const next = { ...taxiDataPreferences, [key]: preference };
+    setTaxiDataPreferences(next);
+    await taxiProfileRepository.savePreferences(next);
+  };
   const saveTariffs = (items: Tariff[]) => {
+    if (!taxiDataAccess.canManageTariffs) return;
     const ids = new Set(items.map((item) => item.id));
     const groupIds = new Set(items.map((item) => item.groupId).filter((id): id is string => !!id));
     const next = [...tariffs.filter((item) => !ids.has(item.id) && (!item.groupId || !groupIds.has(item.groupId))), ...items];
@@ -228,6 +268,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     }
   };
   const setDefaultTariff = (id: string) => {
+    if (!taxiDataAccess.canManageTariffs) return;
     setTariffs((current) => {
       const next = current.map((item) => ({ ...item, isDefault: item.id === id, showOnHome: item.id === id ? true : item.showOnHome }));
       void storage.setTariffs(next); return next;
@@ -236,6 +277,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     void storage.setDefaultTariffId(id);
   };
   const deleteTariffGroup = (groupId: string) => {
+    if (!taxiDataAccess.canManageTariffs) return false;
     const targets = tariffs.filter((tariff) => tariff.groupId === groupId);
     if (!targets.length || targets.some((tariff) => tariff.isDefault || tariff.isOfficial)) return false;
     const next = tariffs.filter((tariff) => tariff.groupId !== groupId);
@@ -247,6 +289,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     return true;
   };
   const deleteTariff = (id: string) => {
+    if (!taxiDataAccess.canManageTariffs) return false;
     const target = tariffs.find((item) => item.id === id);
     if (!target || target.isDefault) return false;
     const next = tariffs.filter((item) => item.id !== id);
@@ -258,6 +301,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     return true;
   };
   const setTariffVisibility = (id: string, visible: boolean) => {
+    if (!taxiDataAccess.canManageTariffs) return false;
     const target = tariffs.find((tariff) => tariff.id === id);
     if (!target) return false;
     const visibleCount = tariffs.filter((tariff) => tariff.showOnHome !== false).length;
@@ -273,6 +317,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     return true;
   };
   const setTariffGroupVisibility = (groupId: string, visible: boolean) => {
+    if (!taxiDataAccess.canManageTariffs) return false;
     const targets = tariffs.filter((tariff) => tariff.groupId === groupId);
     if (!targets.length) return false;
     const targetIds = new Set(targets.map((tariff) => tariff.id));
@@ -323,7 +368,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     }
     catch {
       setActiveTrip(null);
-      await Promise.allSettled([storage.setActiveTrip(null), endExternalTripDisplay()]);
+      await Promise.allSettled([storage.setActiveTrip(null), endExternalTripDisplay(language)]);
       throw new Error('Location tracking failed');
     }
     return true;
@@ -411,18 +456,22 @@ export function AppProvider({ children }: PropsWithChildren) {
       ? Math.min(priceBeforeDiscount, Math.max(0, requestedFinalPrice))
       : Math.round(priceBeforeDiscount * (100 - (discountPercent ?? 0))) / 100;
     const discountAmount = Math.round((priceBeforeDiscount - total) * 100) / 100;
+    const receiptTaxiProfile = createReceiptTaxiProfile(taxiProfile, taxiDataPreferences.includeOnReceipt);
     const finished: Trip = {
       ...latest, status: 'completed', endedAt, meteredTotal, total,
       discountPercent,
       discountAmount,
       tariffSegments: latest.tariffSegments?.map((segment, index, all) => index === all.length - 1 ? { ...segment, endedAt } : segment),
+      receiptTaxiProfile,
+      receiptTaxiProfileMetadata: receiptTaxiProfile ? { ...taxiProfileMetadata } : undefined,
     };
     const nextTrips = [finished, ...trips];
     setTrips(nextTrips); setActiveTrip(null);
-    await Promise.allSettled([storage.setTrips(nextTrips), storage.setActiveTrip(null), endExternalTripDisplay()]);
+    await Promise.allSettled([storage.setTrips(nextTrips), storage.setActiveTrip(null), endExternalTripDisplay(language)]);
     return finished;
   };
   const deleteTrip = async (id: string) => {
+    if (!taxiDataAccess.canDeleteReceipts) return;
     const nextTrips = trips.filter((trip) => trip.id !== id);
     setTrips(nextTrips);
     await storage.setTrips(nextTrips);
@@ -442,7 +491,8 @@ export function AppProvider({ children }: PropsWithChildren) {
   const recommendedTariffId = now > 0 && activeTrip?.status === 'active' && activeTrip.meterEnabled !== false
     ? resolveStartingTariff(tariffs, activeTrip.tariff, new Date(now)).id
     : null;
-  const value: AppValue = ({ ready, tariffs, trips, activeTrip, displayTrip, selectedTariffId, elapsedSeconds, gpsStale, recommendedTariffId,
+  const value: AppValue = ({ ready, tariffs, trips, activeTrip, displayTrip, selectedTariffId, elapsedSeconds, gpsStale, recommendedTariffId, taxiProfile, taxiProfileMetadata, taxiDataPreferences, taxiDataAccess,
+    saveTaxiProfile, setTaxiDataPreference,
     setSelectedTariffId, saveTariff, saveTariffs, deleteTariff, deleteTariffGroup, setDefaultTariff, setTariffVisibility, setTariffGroupVisibility, deleteTrip, switchTripTariff, startTrip, togglePause, finishTrip,
   });
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

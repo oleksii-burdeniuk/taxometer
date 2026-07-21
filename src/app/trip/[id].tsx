@@ -10,6 +10,7 @@ import { useI18n } from '@/i18n';
 import { confirmAction } from '@/lib/confirm-action';
 import { formatDuration, formatMoney, getTripFareBreakdown } from '@/lib/meter';
 import { createReceipt } from '@/lib/receipt';
+import { getTaxiProfileReceiptSections } from '@/lib/receipt-profile';
 
 const mono = Platform.select({ ios: 'Menlo', android: 'monospace', web: 'monospace' });
 
@@ -29,7 +30,7 @@ export default function TripSummaryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { t, receiptT, receiptLocale } = useI18n();
-  const { ready, trips, deleteTrip } = useApp();
+  const { ready, trips, deleteTrip, taxiDataAccess } = useApp();
   const [exporting, setExporting] = useState(false);
   const trip = trips.find((item) => item.id === id);
 
@@ -51,19 +52,25 @@ export default function TripSummaryScreen() {
     ? segments.filter((segment) => segment.waitingSeconds > 0).map((segment) => `${segment.tariff.name}: ${(segment.waitingSeconds / 60).toFixed(1)} min × ${money(segment.tariff.waitingPerMinute)}`).join(' · ')
     : `${fare.waitingMinutes.toFixed(1)} min × ${money(trip.tariff.waitingPerMinute)}`;
   const receiptNumber = trip.id.slice(-8).toUpperCase();
+  const receiptLabels = {
+    receipt: receiptT('receipt'), rideReceipt: receiptT('rideReceipt'), receiptNumber: receiptT('receiptNumber'),
+    started: receiptT('started'), finished: receiptT('finished'), tariff: receiptT('tariff'), distance: receiptT('distance'),
+    time: receiptT('time'), waiting: receiptT('waiting'), total: receiptT('total'), baseCharge: receiptT('baseCharge'),
+    distanceCharge: receiptT('distanceCharge'), waitingCharge: receiptT('waitingCharge'),
+    minimumAdjustment: receiptT('minimumAdjustment'), includedAllowance: receiptT('includedAllowance'),
+    meteredFare: receiptT('meteredFare'), agreedFare: receiptT('agreedFare'), discount: receiptT('discount'),
+    pickupAddress: receiptT('pickupAddress'), dropoffAddress: receiptT('dropoffAddress'), fixedPriceRide: receiptT('fixedPriceRide'),
+    thankYou: receiptT('thankYou'), notFiscal: receiptT('notFiscal'),
+    companyData: receiptT('companyData'), companyName: receiptT('companyName'), companyNip: 'NIP', companyAddress: receiptT('companyAddress'), companyPhone: receiptT('companyPhone'), companyEmail: 'Email', companyRegistry: receiptT('companyRegistry'),
+    driverData: receiptT('driverData'), driverName: receiptT('driverName'), driverIdentifier: receiptT('driverIdentifier'), driverPhone: receiptT('driverPhone'),
+    vehicleData: receiptT('vehicleData'), vehicleMake: receiptT('vehicleMake'), vehicleModel: receiptT('vehicleModel'), registrationNumber: receiptT('registrationNumber'), vehicleVin: receiptT('vehicleVin'), vehicleSideNumber: receiptT('vehicleSideNumber'),
+    taxiLicense: receiptT('taxiLicense'), licenseHolderName: receiptT('licenseHolderName'), licenseNumber: receiptT('licenseNumber'), licenseExtractNumber: receiptT('licenseExtractNumber'), issuingAuthority: receiptT('issuingAuthority'), licenseArea: receiptT('licenseArea'), licenseValidUntil: receiptT('licenseValidUntil'),
+  };
+  const taxiProfileSections = getTaxiProfileReceiptSections(trip.receiptTaxiProfile, receiptLabels);
   const share = async () => {
     setExporting(true);
     try {
-      await createReceipt(trip, receiptLocale, {
-        receipt: receiptT('receipt'), rideReceipt: receiptT('rideReceipt'), receiptNumber: receiptT('receiptNumber'),
-        started: receiptT('started'), finished: receiptT('finished'), tariff: receiptT('tariff'), distance: receiptT('distance'),
-        time: receiptT('time'), waiting: receiptT('waiting'), total: receiptT('total'), baseCharge: receiptT('baseCharge'),
-        distanceCharge: receiptT('distanceCharge'), waitingCharge: receiptT('waitingCharge'),
-        minimumAdjustment: receiptT('minimumAdjustment'), includedAllowance: receiptT('includedAllowance'),
-        meteredFare: receiptT('meteredFare'), agreedFare: receiptT('agreedFare'), discount: receiptT('discount'),
-        pickupAddress: receiptT('pickupAddress'), dropoffAddress: receiptT('dropoffAddress'), fixedPriceRide: receiptT('fixedPriceRide'),
-        thankYou: receiptT('thankYou'), notFiscal: receiptT('notFiscal'),
-      });
+      await createReceipt(trip, receiptLocale, receiptLabels);
     } catch { Alert.alert(t('receipt'), t('receiptError')); }
     finally { setExporting(false); }
   };
@@ -96,6 +103,10 @@ export default function TripSummaryScreen() {
           {trip.pickupAddress && <ReceiptRow label={receiptT('pickupAddress')} value={trip.pickupAddress} />}
           {trip.dropoffAddress && <ReceiptRow label={receiptT('dropoffAddress')} value={trip.dropoffAddress} />}
         </View>
+        {taxiProfileSections.length > 0 && <>
+          <DashedRule />
+          <View style={styles.profileSections}>{taxiProfileSections.map((section) => <View key={section.title} style={styles.profileSection}><Text style={styles.profileTitle}>{section.title}</Text>{section.rows.map((row) => <ReceiptRow key={row.label} label={row.label} value={row.value} />)}</View>)}</View>
+        </>}
         <DashedRule />
         {isMeteredRide ? <View style={styles.stats}>
           <View style={styles.stat}><Text style={styles.statValue}>{(trip.distanceMeters / 1000).toFixed(2)} km</Text><Text style={styles.statLabel}>{receiptT('distance')}</Text></View>
@@ -124,7 +135,7 @@ export default function TripSummaryScreen() {
         {exporting ? <ActivityIndicator color={colors.dark} /> : <><Ionicons name="share-outline" size={21} color={colors.dark} /><Text style={styles.shareLabel}>{t('shareReceipt')}</Text></>}
       </Pressable>
       <Pressable accessibilityRole="button" onPress={() => router.replace('/')} style={styles.newTripButton}><Text style={styles.newTripLabel}>{t('newTrip')}</Text></Pressable>
-      <Pressable accessibilityRole="button" onPress={confirmDelete} style={styles.deleteTripButton}><Ionicons name="trash-outline" size={18} color="#FF7777" /><Text style={styles.deleteTripLabel}>{t('deleteTrip')}</Text></Pressable>
+      {taxiDataAccess.canDeleteReceipts && <Pressable accessibilityRole="button" onPress={confirmDelete} style={styles.deleteTripButton}><Ionicons name="trash-outline" size={18} color="#FF7777" /><Text style={styles.deleteTripLabel}>{t('deleteTrip')}</Text></Pressable>}
     </ScrollView>
   </SafeAreaView>;
 }
@@ -145,6 +156,7 @@ const styles = StyleSheet.create({
   receiptNumber: { fontFamily: mono, textAlign: 'center', color: '#77766F', fontSize: 10, marginTop: 5 },
   rule: { borderBottomWidth: 1, borderStyle: 'dashed', borderColor: '#77766F', marginVertical: 19 },
   meta: { gap: 1 }, chargeBlock: { paddingVertical: 5 },
+  profileSections: { gap: 12 }, profileSection: { gap: 0 }, profileTitle: { fontFamily: mono, color: '#77766F', fontSize: 9, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 18 }, rowLabel: { fontFamily: mono, color: '#55544F', fontSize: 11, flex: 1 },
   rowValue: { fontFamily: mono, color: colors.text, fontSize: 11, fontWeight: '700', textAlign: 'right', flexShrink: 1 },
   detail: { fontFamily: mono, color: '#8B8981', fontSize: 9, marginTop: 3 },

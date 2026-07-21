@@ -110,7 +110,7 @@ export default function TariffsScreen() {
   const { colors } = useTheme();
   const sharedStyles = useSharedStyles();
   const styles = useThemedStyles(createStyles);
-  const { tariffs, activeTrip, saveTariff, saveTariffs, deleteTariff, deleteTariffGroup, setDefaultTariff, setTariffVisibility, setTariffGroupVisibility } = useApp();
+  const { tariffs, activeTrip, taxiDataAccess, saveTariff, saveTariffs, deleteTariff, deleteTariffGroup, setDefaultTariff, setTariffVisibility, setTariffGroupVisibility } = useApp();
   const [form, setForm] = useState<Form | null>(null);
   const [crossoverExpanded, setCrossoverExpanded] = useState(false);
   const [customCurrencyOpen, setCustomCurrencyOpen] = useState(false);
@@ -126,6 +126,7 @@ export default function TariffsScreen() {
   const availableCurrencies = useMemo(() => [...new Set([...defaultCurrencies, ...tariffs.map((tariff) => tariff.currency), ...(form ? [form.currency] : [])])], [form, tariffs]);
   const switchTrackColors = useMemo(() => ({ false: colors.border, true: colors.primary }), [colors.border, colors.primary]);
   const editing = !!form && tariffs.some((tariff) => tariff.id === form.id || (!!form.groupId && tariff.groupId === form.groupId));
+  const editingLocked = !!activeTrip || !taxiDataAccess.canManageTariffs;
   const parse = (value: string) => Number(value.replace(',', '.'));
   const compactNumber = (value: number, maximumFractionDigits = 2) => Number.isFinite(value) ? new Intl.NumberFormat(locale, { maximumFractionDigits }).format(value) : '—';
   const crossoverPreview = form ? (() => {
@@ -252,9 +253,10 @@ export default function TariffsScreen() {
   };
 
   return <SafeAreaView edges={['top']} style={sharedStyles.screen}>
-    <ScreenHeader title={t('tariffs')} action={<Pressable accessibilityRole="button" disabled={!!activeTrip} onPress={() => openForm(emptyForm())} style={[styles.add, activeTrip && styles.disabled]}><Ionicons name="add" size={25} color={colors.dark} /><Text style={styles.addText}>{t('addTariff')}</Text></Pressable>} />
+    <ScreenHeader title={t('tariffs')} action={<Pressable accessibilityRole="button" disabled={editingLocked} onPress={() => openForm(emptyForm())} style={[styles.add, editingLocked && styles.disabled]}><Ionicons name="add" size={25} color={colors.dark} /><Text style={styles.addText}>{t('addTariff')}</Text></Pressable>} />
     <ScrollView contentContainerStyle={sharedStyles.content}>
       {activeTrip && <View style={styles.lockedNotice}><Ionicons name="lock-closed-outline" size={18} color={colors.warningText} /><Text style={styles.lockedNoticeText}>{t('tariffEditingLocked')}</Text></View>}
+      {!activeTrip && !taxiDataAccess.canManageTariffs && <View style={styles.lockedNotice}><Ionicons name="business-outline" size={18} color={colors.warningText} /><Text style={styles.lockedNoticeText}>{t('managedTariffsHint')}</Text></View>}
       {groups.map(({ id, items }) => {
         const first = items[0];
         const isSet = first.kind === 'zoned' || !!first.groupId;
@@ -262,7 +264,7 @@ export default function TariffsScreen() {
         return <Card key={id} style={styles.tariffCard}>
           <View style={styles.groupHeader}>
             <View style={styles.nameRow}><View style={[styles.icon, items.some((tariff) => tariff.isDefault) && styles.iconDefault]}><Ionicons name={first.isOfficial ? 'shield-checkmark-outline' : 'car-sport-outline'} size={23} color={items.some((tariff) => tariff.isDefault) ? colors.dark : colors.text} /></View><View style={styles.nameText}><Text style={styles.name}>{isSet ? first.groupName : first.name}</Text><View style={styles.badges}><View style={styles.badge}><Text style={styles.badgeText}>{first.currency}</Text></View><View style={styles.badge}><Text style={styles.badgeText}>{first.isOfficial ? t('officialPreset') : isSet ? t('tariffSet') : t('singleTariff')}</Text></View>{items.some((tariff) => tariff.isDefault) && <View style={styles.defaultBadge}><Ionicons name="star" size={11} color={colors.dark} /><Text style={styles.defaultBadgeText}>{t('default')}</Text></View>}</View></View></View>
-            {first.isOfficial ? <View style={styles.presetControl}><Text style={[styles.presetState, presetEnabled && styles.presetStateEnabled]}>{presetEnabled ? t('presetEnabled') : t('presetDisabled')}</Text><Switch accessibilityLabel={t('showPresetOnHome')} accessibilityState={{ disabled: !!activeTrip }} disabled={!!activeTrip} style={styles.presetSwitch} value={presetEnabled} onValueChange={(visible) => { if (first.groupId) setTariffGroupVisibility(first.groupId, visible); }} trackColor={switchTrackColors} thumbColor={presetEnabled ? colors.dark : colors.muted} /></View> : <Pressable accessibilityLabel={t('editTariff')} accessibilityRole="button" accessibilityState={{ disabled: !!activeTrip }} disabled={!!activeTrip} onPress={() => openForm(formFromTariffs(items))} style={[styles.editButton, activeTrip && styles.disabled]}><Ionicons name="create-outline" size={20} color={colors.blue} /></Pressable>}
+            {first.isOfficial ? <View style={styles.presetControl}><Text style={[styles.presetState, presetEnabled && styles.presetStateEnabled]}>{presetEnabled ? t('presetEnabled') : t('presetDisabled')}</Text><Switch accessibilityLabel={t('showPresetOnHome')} accessibilityState={{ disabled: editingLocked }} disabled={editingLocked} style={styles.presetSwitch} value={presetEnabled} onValueChange={(visible) => { if (first.groupId) setTariffGroupVisibility(first.groupId, visible); }} trackColor={switchTrackColors} thumbColor={presetEnabled ? colors.dark : colors.muted} /></View> : <Pressable accessibilityLabel={t('editTariff')} accessibilityRole="button" accessibilityState={{ disabled: editingLocked }} disabled={editingLocked} onPress={() => openForm(formFromTariffs(items))} style={[styles.editButton, editingLocked && styles.disabled]}><Ionicons name="create-outline" size={20} color={colors.blue} /></Pressable>}
           </View>
           <View style={styles.commonSummary}><Text style={styles.commonSummaryText}>{items.length} {t('rates')}  ·  {t('baseFare')} <Text style={styles.commonSummaryValue}>{formatMoney(first.baseFare, first.currency, locale)}</Text>  ·  {t('waitingRate')} <Text style={styles.commonSummaryValue}>{formatMoney(first.waitingPerMinute * 60, first.currency, locale)}</Text>  ·  {t('includedKm')} <Text style={styles.commonSummaryValue}>{new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(first.includedKm)} km</Text></Text>{first.isOfficial && !presetEnabled && <Text style={styles.presetHiddenHint}>{t('presetHiddenHint')}</Text>}</View>
           {(!first.isOfficial || presetEnabled) && <View style={styles.rateList}>{items.map((tariff) => { const crossover = getCrossoverSpeedKmh(tariff); return <View key={tariff.id} style={[styles.variantRow, tariff.isDefault && styles.variantRowDefault]}>
@@ -273,11 +275,11 @@ export default function TariffsScreen() {
               <Text style={styles.variantMeta}>{t('crossoverSpeed')}: {Number.isFinite(crossover) ? crossover.toFixed(1) : '∞'} km/h</Text>
             </View>
             <View style={styles.compactActions}>
-              {!first.isOfficial && <View style={styles.compactHome}><Text style={styles.compactHomeLabel}>{t('homeShort')}</Text><Switch accessibilityLabel={t('showOnHome')} style={styles.compactSwitch} value={tariff.showOnHome !== false} onValueChange={(visible) => { if (!setTariffVisibility(tariff.id, visible)) Alert.alert(t('atLeastOneHomeTariff')); }} trackColor={switchTrackColors} thumbColor={tariff.showOnHome !== false ? colors.dark : colors.muted} /></View>}
-              <Pressable accessibilityLabel={tariff.isDefault ? t('default') : t('makeDefault')} accessibilityRole="radio" accessibilityState={{ checked: tariff.isDefault, disabled: !!activeTrip }} disabled={!!activeTrip || tariff.isDefault} onPress={() => setDefaultTariff(tariff.id)} style={[styles.starButton, tariff.isDefault && styles.starButtonActive, activeTrip && styles.disabled]}><Ionicons name={tariff.isDefault ? 'star' : 'star-outline'} size={17} color={tariff.isDefault ? colors.dark : colors.blue} /></Pressable>
+              {!first.isOfficial && <View style={styles.compactHome}><Text style={styles.compactHomeLabel}>{t('homeShort')}</Text><Switch accessibilityLabel={t('showOnHome')} accessibilityState={{ disabled: editingLocked }} disabled={editingLocked} style={styles.compactSwitch} value={tariff.showOnHome !== false} onValueChange={(visible) => { if (!setTariffVisibility(tariff.id, visible)) Alert.alert(t('atLeastOneHomeTariff')); }} trackColor={switchTrackColors} thumbColor={tariff.showOnHome !== false ? colors.dark : colors.muted} /></View>}
+              <Pressable accessibilityLabel={tariff.isDefault ? t('default') : t('makeDefault')} accessibilityRole="radio" accessibilityState={{ checked: tariff.isDefault, disabled: editingLocked }} disabled={editingLocked || tariff.isDefault} onPress={() => setDefaultTariff(tariff.id)} style={[styles.starButton, tariff.isDefault && styles.starButtonActive, editingLocked && styles.disabled]}><Ionicons name={tariff.isDefault ? 'star' : 'star-outline'} size={17} color={tariff.isDefault ? colors.dark : colors.blue} /></Pressable>
             </View>
           </View>; })}</View>}
-          {!first.isOfficial && !activeTrip && <Pressable accessibilityRole="button" onPress={() => removeGroup(id, items)} style={styles.deleteAction}><Ionicons name="trash-outline" size={17} color={colors.danger} /><Text style={styles.deleteText}>{isSet ? t('deleteSet') : t('delete')}</Text></Pressable>}
+          {!first.isOfficial && !editingLocked && <Pressable accessibilityRole="button" onPress={() => removeGroup(id, items)} style={styles.deleteAction}><Ionicons name="trash-outline" size={17} color={colors.danger} /><Text style={styles.deleteText}>{isSet ? t('deleteSet') : t('delete')}</Text></Pressable>}
         </Card>;
       })}
     </ScrollView>

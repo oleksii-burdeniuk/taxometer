@@ -1,5 +1,50 @@
 export type Language = 'uk' | 'en' | 'pl';
 export type ThemePreference = 'system' | 'light' | 'dark';
+
+export type TaxiProfile = {
+  companyName?: string;
+  companyNip?: string;
+  companyAddress?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+  companyRegistryType?: 'CEIDG' | 'KRS';
+  companyRegistryNumber?: string;
+  driverName?: string;
+  driverIdentifier?: string;
+  driverPhone?: string;
+  vehicleMake?: string;
+  vehicleModel?: string;
+  vehicleRegistrationNumber?: string;
+  vehicleVin?: string;
+  vehicleSideNumber?: string;
+  licenseHolderName?: string;
+  licenseNumber?: string;
+  licenseExtractNumber?: string;
+  licenseIssuingAuthority?: string;
+  licenseArea?: string;
+  licenseValidUntil?: string;
+};
+
+export type TaxiDataPreferences = {
+  includeOnReceipt: boolean;
+  allowProfileEditing: boolean;
+  allowReceiptDeletion: boolean;
+  managedMode: boolean;
+};
+
+export type TaxiProfileMetadata = {
+  source: 'local' | 'backend';
+  revision: number;
+  updatedAt?: string;
+  syncedAt?: string;
+};
+
+export type TaxiDataAccess = {
+  canEditProfile: boolean;
+  canManageTariffs: boolean;
+  canDeleteReceipts: boolean;
+};
+
 export type TariffKind = 'single' | 'zoned';
 export type TariffScheduleKind = 'always' | 'weekday' | 'nightHoliday';
 
@@ -79,4 +124,7 @@ export type Trip = {
   tariffSegments?: TripTariffSegment[];
   trackingWarning?: 'gps';
   zoneMode?: 'single' | 'cross';
+  /** Immutable taxi details captured when the receipt is created. */
+  receiptTaxiProfile?: TaxiProfile;
+  receiptTaxiProfileMetadata?: TaxiProfileMetadata;
 };

@@ -24,32 +24,51 @@ export type ExternalTripSnapshot = {
     expand: string;
     active: string;
     paused: string;
+    activeShort: string;
+    pausedShort: string;
     fixedPrice: string;
   };
   openUrl: string;
   controlUrl: string;
 };
 
+export type TripHomeWidgetIdleCopy = {
+  appName: string;
+  title: string;
+  hint: string;
+  open: string;
+};
+
 const copy: Record<Language, ExternalTripSnapshot['labels']> = {
   uk: {
     appName: 'Таксометр', currentFare: 'Поточна ціна', distance: 'Відстань', time: 'Час', tariff: 'Тариф',
     pause: 'Пауза', resume: 'Продовжити', open: 'Відкрити', collapse: 'Згорнути', expand: 'Розгорнути',
-    active: 'Поїздка триває', paused: 'Поїздку призупинено',
+    active: 'Поїздка триває', paused: 'Поїздку призупинено', activeShort: 'Активна', pausedShort: 'Пауза',
     fixedPrice: 'Узгоджена ціна',
   },
   en: {
     appName: 'Taxometer', currentFare: 'Current fare', distance: 'Distance', time: 'Time', tariff: 'Tariff',
     pause: 'Pause', resume: 'Resume', open: 'Open', collapse: 'Collapse', expand: 'Expand',
-    active: 'Ride in progress', paused: 'Ride paused',
+    active: 'Ride in progress', paused: 'Ride paused', activeShort: 'Active', pausedShort: 'Paused',
     fixedPrice: 'Fixed price',
   },
   pl: {
     appName: 'Taksometr', currentFare: 'Aktualna cena', distance: 'Dystans', time: 'Czas', tariff: 'Taryfa',
     pause: 'Pauza', resume: 'Wznów', open: 'Otwórz', collapse: 'Zwiń', expand: 'Rozwiń',
-    active: 'Kurs trwa', paused: 'Kurs wstrzymany',
+    active: 'Kurs trwa', paused: 'Kurs wstrzymany', activeShort: 'Aktywny', pausedShort: 'Pauza',
     fixedPrice: 'Cena umówiona',
   },
 };
+
+const idleWidgetCopy: Record<Language, TripHomeWidgetIdleCopy> = {
+  uk: { appName: 'Таксометр', title: 'Готовий до нової поїздки', hint: 'Відкрийте застосунок, щоб почати', open: 'Відкрити' },
+  en: { appName: 'Taxometer', title: 'Ready for a new trip', hint: 'Open the app to start', open: 'Open app' },
+  pl: { appName: 'Taksometr', title: 'Gotowy na nowy kurs', hint: 'Otwórz aplikację, aby rozpocząć', open: 'Otwórz' },
+};
+
+export function getTripHomeWidgetIdleCopy(language: Language) {
+  return idleWidgetCopy[language];
+}
 
 export function createExternalTripSnapshot(trip: Trip, now: number, language: Language): ExternalTripSnapshot {
   const startedAtMs = new Date(trip.startedAt).getTime();

@@ -69,7 +69,21 @@
         {
           "bundleIdentifier": "com.oleksiiburdeniuk.taxometer.ExpoWidgetsTarget",
           "groupIdentifier": "group.com.oleksiiburdeniuk.taxometer",
-          "frequentUpdates": true
+          "frequentUpdates": true,
+          "widgets": [
+            {
+              "name": "TaxometerTripWidget",
+              "displayName": "Taxometer",
+              "description": "Current fare, trip time, distance and tariff at a glance.",
+              "contentMarginsDisabled": true,
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium",
+                "systemLarge"
+              ],
+              "android": null
+            }
+          ]
         }
       ],
       "expo-image",
